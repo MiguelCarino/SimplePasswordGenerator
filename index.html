@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Strong Password Generator + Hash Viewer</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #2f0959;
+      color: #fff;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .subheading {
+      margin-bottom: 1.5rem;
+      color: #cdebd9;
+    }
+
+    .password-box {
+      background: #144c2f;
+      padding: 1rem;
+      border-radius: 10px;
+      font-size: 1.5rem;
+      font-weight: bold;
+      word-break: break-word;
+    }
+
+    .controls {
+      display: flex;
+      gap: 1rem;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+
+    input[type="range"] {
+      flex: 1;
+    }
+
+    button, select {
+      background-color: #2ec971;
+      color: white;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    button:hover {
+      background-color: #26b162;
+    }
+
+    .checkboxes label {
+      margin-right: 1rem;
+    }
+
+    .section {
+      margin-top: 2rem;
+    }
+
+    .output {
+      background: #103d26;
+      padding: 1rem;
+      border-radius: 8px;
+      word-break: break-word;
+      font-family: monospace;
+    }
+
+    .hash-label {
+      font-weight: bold;
+      margin-top: 1rem;
+    }
+
+    .copy-btn {
+      margin-left: 0.5rem;
+      background: #2ec971;
+      border: none;
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .copy-btn:hover {
+      background: #26b162;
+    }
+    .output-wrapper {
+      display: flex;
+      align-items: start;
+      gap: 0.5rem;
+    }
+    .output-wrapper .output {
+      flex: 1;
+    }
+
+
+    @media (max-width: 600px) {
+      .controls {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🔐 Password Generator</h1>
+  <p class="subheading">Generate secure passwords and automatically view their hashes.</p>
+
+  <div class="password-box" id="passwordOutput">Click Generate</div>
+
+  <div class="controls">
+    <button onclick="generatePassword()">Generate</button>
+    <input type="range" id="lengthRange" min="8" max="254" value="32" oninput="updateLengthDisplay()" />
+    <span id="lengthDisplay">32</span>
+  </div>
+
+  <div class="checkboxes">
+    <label><input type="checkbox" id="includeUpper" checked> ABC</label>
+    <label><input type="checkbox" id="includeLower" checked> abc</label>
+    <label><input type="checkbox" id="includeDigits" checked> 123</label>
+    <label><input type="checkbox" id="includeSymbols" checked> @#*</label>
+    <label><input type="checkbox" id="excludeConfusing" checked> Easy to read (no i1l0O)</label>
+  </div>
+
+  <div class="section">
+    <h3>🔒 Hash Outputs</h3>
+
+    <div class="hash-label">SHA-256</div>
+    <div class="output-wrapper">
+      <div class="output" id="sha256Output">—</div>
+      <button class="copy-btn" onclick="copyToClipboard('sha1Output')">📋</button>
+    </div>
+
+    <div class="hash-label">SHA-1</div>
+    <div class="output-wrapper">
+      <div class="output" id="sha1Output">—</div>
+      <button class="copy-btn" onclick="copyToClipboard('sha1Output')">📋</button>
+    </div>
+
+    <div class="hash-label">MD5</div>
+    <div class="output-wrapper">
+      <div class="output" id="md5Output">—</div>
+      <button class="copy-btn" onclick="copyToClipboard('md5Output')">📋</button>
+    </div>
+
+    <div class="label">🧊 AES-256-GCM (Random Key)</div>
+    <div class="output-wrapper">
+      <div class="output" id="aesOutput">—</div>
+      <button class="copy-btn" onclick="copyToClipboard('aesOutput')">📋</button>
+    </div>
+
+
+  </div>
+
+  <script>
+    const passwordBox = document.getElementById("passwordOutput");
+    const sha256Output = document.getElementById("sha256Output");
+    const sha1Output = document.getElementById("sha1Output");
+    const md5Output = document.getElementById("md5Output");
+
+    const charsetOptions = {
+      upper: "ABCDEFGHJKLMNPQRSTUVWXYZ",
+      lower: "abcdefghjkmnpqrstuvwxyz",
+      digits: "23456789",
+      symbols: "!@#$%^&*()_+-=[]{}|;:',.<>/?",
+      confusing: "iIl1oO0"
+    };
+
+    function updateLengthDisplay() {
+      document.getElementById("lengthDisplay").textContent =
+        document.getElementById("lengthRange").value;
+    }
+
+    function copyToClipboard(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const text = el.textContent || el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Copied to clipboard!");
+      }, err => {
+        alert("Failed to copy.");
+      });
+    }
+
+    function generatePassword() {
+      let charset = "";
+      if (document.getElementById("includeUpper").checked)
+        charset += charsetOptions.upper;
+      if (document.getElementById("includeLower").checked)
+        charset += charsetOptions.lower;
+      if (document.getElementById("includeDigits").checked)
+        charset += charsetOptions.digits;
+      if (document.getElementById("includeSymbols").checked)
+        charset += charsetOptions.symbols;
+
+      if (!charset) {
+        passwordBox.textContent = "Select at least one character type.";
+        return;
+      }
+
+      if (document.getElementById("excludeConfusing").checked) {
+        charset = charset
+          .split("")
+          .filter(ch => !charsetOptions.confusing.includes(ch))
+          .join("");
+      }
+
+      const length = parseInt(document.getElementById("lengthRange").value, 10);
+      let password = "";
+      for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * charset.length);
+        password += charset[randomIndex];
+      }
+
+      passwordBox.textContent = password;
+      updateHashes(password);
+      encryptAES(password);
+    }
+    
+
+    async function updateHashes(password) {
+      // SHA-256
+      const encoder = new TextEncoder();
+      const data = encoder.encode(password);
+      const sha256Buf = await crypto.subtle.digest("SHA-256", data);
+      const sha256Hex = Array.from(new Uint8Array(sha256Buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      sha256Output.textContent = sha256Hex;
+
+      // SHA-1
+      const sha1Buf = await crypto.subtle.digest("SHA-1", data);
+      const sha1Hex = Array.from(new Uint8Array(sha1Buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      sha1Output.textContent = sha1Hex;
+
+      // MD5
+      md5Output.textContent = md5(password);
+    }
+
+    async function encryptAES(password) {
+      const enc = new TextEncoder();
+      const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV
+      const key = await crypto.subtle.generateKey(
+        { name: "AES-GCM", length: 256 },
+        true,
+        ["encrypt"]
+      );
+      const encrypted = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv },
+        key,
+        enc.encode(password)
+      );
+
+      const ivBase64 = btoa(String.fromCharCode(...iv));
+      const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+
+      document.getElementById("aesOutput").textContent = `IV: ${ivBase64}\nEncrypted: ${encryptedBase64}`;
+    }
+
+
+    // Lightweight MD5 implementation
+    /*! https://github.com/blueimp/JavaScript-MD5 */
+    function md5(e){function h(a,b){var c=(a&65535)+(b&65535);return(a>>16)+(b>>16)+(c>>16)<<16|c&65535}function k(a,b,c,d,e,f){return h((g=h(h(b,a),h(d,f)))<<e|g>>>32-e,c);var g}function m(a,b,c,d,e,f,g){return k(b&c|~b&d,a,b,e,f,g)}function n(a,b,c,d,e,f,g){return k(b&d|c&~d,a,b,e,f,g)}function p(a,b,c,d,e,f,g){return k(b^c^d,a,b,e,f,g)}function q(a,b,c,d,e,f,g){return k(c^(b|~d),a,b,e,f,g)}function r(a){var b="",c=32*a.length;for(let d=0;d<c;d+=8)b+=String.fromCharCode(a[d>>5]>>>d%32&255);return b}function s(a){var b=[];b[(a.length>>2)-1]=void 0;for(let c=0;c<b.length;c++)b[c]=0;for(let c=0;c<8*a.length;c+=8)b[c>>5]|=(255&a.charCodeAt(c/8))<<c%32;return b}function t(a){for(var b="0123456789abcdef",c="",d=0;d<a.length;d++)c+=b.charAt(a.charCodeAt(d)>>4&15)+b.charAt(15&a.charCodeAt(d));return c}function u(a){return unescape(encodeURIComponent(a))}var f=[1732584193,-271733879,-1732584194,271733878],l=s(u(e));l[l.length>>5]|=128<<l.length%32,l[14+(l.length+64>>>9<<4)]=8*e.length;for(let a=0;a<l.length;a+=16){var b=f[0],c=f[1],d=f[2],g=f[3];f[0]=m(f[0],f[1],f[2],f[3],l[a],7,-680876936),f[3]=m(f[3],f[0],f[1],f[2],l[a+1],12,-389564586),f[2]=m(f[2],f[3],f[0],f[1],l[a+2],17,606105819),f[1]=m(f[1],f[2],f[3],f[0],l[a+3],22,-1044525330),f[0]=m(f[0],f[1],f[2],f[3],l[a+4],7,-176418897),f[3]=m(f[3],f[0],f[1],f[2],l[a+5],12,1200080426),f[2]=m(f[2],f[3],f[0],f[1],l[a+6],17,-1473231341),f[1]=m(f[1],f[2],f[3],f[0],l[a+7],22,-45705983),f[0]=m(f[0],f[1],f[2],f[3],l[a+8],7,1770035416),f[3]=m(f[3],f[0],f[1],f[2],l[a+9],12,-1958414417),f[2]=m(f[2],f[3],f[0],f[1],l[a+10],17,-42063),f[1]=m(f[1],f[2],f[3],f[0],l[a+11],22,-1990404162),f[0]=m(f[0],f[1],f[2],f[3],l[a+12],7,1804603682),f[3]=m(f[3],f[0],f[1],f[2],l[a+13],12,-40341101),f[2]=m(f[2],f[3],f[0],f[1],l[a+14],17,-1502002290),f[1]=m(f[1],f[2],f[3],f[0],l[a+15],22,1236535329),f[0]=n(f[0],f[1],f[2],f[3],l[a+1],5,-165796510),f[3]=n(f[3],f[0],f[1],f[2],l[a+6],9,-1069501632),f[2]=n(f[2],f[3],f[0],f[1],l[a+11],14,643717713),f[1]=n(f[1],f[2],f[3],f[0],l[a],20,-373897302),f[0]=n(f[0],f[1],f[2],f[3],l[a+5],5,-701558691),f[3]=n(f[3],f[0],f[1],f[2],l[a+10],9,38016083),f[2]=n(f[2],f[3],f[0],f[1],l[a+15],14,-660478335),f[1]=n(f[1],f[2],f[3],f[0],l[a+4],20,-405537848),f[0]=n(f[0],f[1],f[2],f[3],l[a+9],5,568446438),f[3]=n(f[3],f[0],f[1],f[2],l[a+14],9,-1019803690),f[2]=n(f[2],f[3],f[0],f[1],l[a+3],14,-187363961),f[1]=n(f[1],f[2],f[3],f[0],l[a+8],20,1163531501),f[0]=n(f[0],f[1],f[2],f[3],l[a+13],5,-1444681467),f[3]=n(f[3],f[0],f[1],f[2],l[a+2],9,-51403784),f[2]=n(f[2],f[3],f[0],f[1],l[a+7],14,1735328473),f[1]=n(f[1],f[2],f[3],f[0],l[a+12],20,-1926607734),f[0]=p(f[0],f[1],f[2],f[3],l[a+5],4,-378558),f[3]=p(f[3],f[0],f[1],f[2],l[a+8],11,-2022574463),f[2]=p(f[2],f[3],f[0],f[1],l[a+11],16,1839030562),f[1]=p(f[1],f[2],f[3],f[0],l[a+14],23,-35309556),f[0]=p(f[0],f[1],f[2],f[3],l[a+1],4,-1530992060),f[3]=p(f[3],f[0],f[1],f[2],l[a+4],11,1272893353),f[2]=p(f[2],f[3],f[0],f[1],l[a+7],16,-155497632),f[1]=p(f[1],f[2],f[3],f[0],l[a+10],23,-1094730640),f[0]=p(f[0],f[1],f[2],f[3],l[a+13],4,681279174),f[3]=p(f[3],f[0],f[1],f[2],l[a],11,-358537222),f[2]=p(f[2],f[3],f[0],f[1],l[a+3],16,-722521979),f[1]=p(f[1],f[2],f[3],f[0],l[a+6],23,76029189),f[0]=p(f[0],f[1],f[2],f[3],l[a+9],4,-640364487),f[3]=p(f[3],f[0],f[1],f[2],l[a+12],11,-421815835),f[2]=p(f[2],f[3],f[0],f[1],l[a+15],16,530742520),f[1]=p(f[1],f[2],f[3],f[0],l[a+2],23,-995338651),f[0]=q(f[0],f[1],f[2],f[3],l[a],6,-198630844),f[3]=q(f[3],f[0],f[1],f[2],l[a+7],10,1126891415),f[2]=q(f[2],f[3],f[0],f[1],l[a+14],15,-1416354905),f[1]=q(f[1],f[2],f[3],f[0],l[a+5],21,-57434055),f[0]=q(f[0],f[1],f[2],f[3],l[a+12],6,1700485571),f[3]=q(f[3],f[0],f[1],f[2],l[a+3],10,-1894986606),f[2]=q(f[2],f[3],f[0],f[1],l[a+10],15,-1051523),f[1]=q(f[1],f[2],f[3],f[0],l[a+1],21,-2054922799),f[0]=q(f[0],f[1],f[2],f[3],l[a+8],6,1873313359),f[3]=q(f[3],f[0],f[1],f[2],l[a+15],10,-30611744),f[2]=q(f[2],f[3],f[0],f[1],l[a+6],15,-1560198380),f[1]=q(f[1],f[2],f[3],f[0],l[a+13],21,1309151649),f[0]=q(f[0],f[1],f[2],f[3],l[a+4],6,-145523070),f[3]=q(f[3],f[0],f[1],f[2],l[a+11],10,-1120210379),f[2]=q(f[2],f[3],f[0],f[1],l[a+2],15,718787259),f[1]=q(f[1],f[2],f[3],f[0],l[a+9],21,-343485551),f[0]=h(f[0],b),f[1]=h(f[1],c),f[2]=h(f[2],d),f[3]=h(f[3],g)}return t(r(f))}
+  </script>
+
+</body>
+</html>

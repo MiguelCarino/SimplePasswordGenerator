@@ -1,10 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="icon" type="image/webp" href="logo.webp">
+  <link rel="icon" type="image/webp" href="logo.webp">
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PassGen — Carino Systems</title>
+  <!-- connect-src 'none' makes "nothing leaves your browser" a rule the browser
+       enforces, not a promise this page makes. Everything here is local. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none';
+        script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';
+        font-src 'self'; img-src 'self' data:; connect-src 'none';
+        form-action 'none'; base-uri 'none'">
+  <title>Password — Carino Systems</title>
+  <meta name="description" content="Make a strong password, and send it to someone safely. Everything happens in your browser.">
   <link rel="stylesheet" href="fonts/carino-fonts.css">
   <style>
     :root {
@@ -18,8 +25,8 @@
       --border:       #1f1f1f;
       --border-hv:    #2e2e2e;
       --text:         #ffffff;
-      --text-sec:     #a3a3a3;
-      --text-muted:   #555555;
+      --text-sec:     #c4c4c4;   /* guiding text — 11.7:1 on the page background */
+      --text-muted:   #8f8f8f;   /* placeholders and sub-labels — 6.3:1 */
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -62,329 +69,145 @@
     .cs-icon-btn:hover { border-color: var(--accent); color: #050505; background: var(--accent); transform: translateY(-2px); box-shadow: 0 4px 12px var(--accent-glow); }
     .cs-icon-btn svg { width: 15px; height: 15px; }
 
-    /* ─── PAGE BODY ─────────────────────────────────────────── */
-    .page-body {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      padding: 2.5rem 1.5rem;
-      overflow-y: auto;
-    }
+    /* ─── PAGE ──────────────────────────────────────────────── */
+    .page-body { flex: 1; display: flex; justify-content: center; padding: 2.5rem 1.5rem; overflow-y: auto; }
+    .container { width: 100%; max-width: 680px; display: flex; flex-direction: column; gap: 22px; }
 
-    .container {
-      width: 100%;
-      max-width: 760px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    /* ─── SUBHEADING ─────────────────────────────────────────── */
-    .subheading {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      letter-spacing: 0.04em;
-    }
-
-    /* ─── PASSWORD BOX ──────────────────────────────────────── */
-    .password-box {
-      background: var(--surface);
-      border: 2px dashed var(--border-hv);
-      border-radius: 8px;
-      padding: 1.4rem 1.2rem;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 1.35rem;
-      font-weight: 700;
-      word-break: break-all;
-      cursor: pointer;
-      text-align: center;
-      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-      color: var(--text);
-      letter-spacing: 0.05em;
-    }
-    .password-box:hover {
-      border-color: var(--accent);
-      background: var(--surface2);
-      box-shadow: 0 0 20px var(--accent-glow);
-    }
-    .password-box:active { transform: scale(0.995); }
-
-    /* ─── CONTROLS ───────────────────────────────────────────── */
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      background: transparent;
-      border: 1px solid var(--accent-dim);
-      color: var(--accent);
-      padding: 0.55rem 1.2rem;
-      border-radius: 5px;
-      cursor: pointer;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      transition: 0.2s;
-      white-space: nowrap;
-    }
-    .btn:hover { background: var(--accent); color: #050505; box-shadow: 0 0 12px var(--accent-glow); }
-
-    .length-track {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 0.4rem 0.9rem;
-      min-width: 180px;
-    }
-    .length-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.68rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      white-space: nowrap;
-    }
-    .length-val {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--accent);
-      min-width: 28px;
-      text-align: right;
-    }
-
-    input[type="range"] {
-      flex: 1;
-      appearance: none;
-      height: 3px;
-      background: var(--border-hv);
-      border-radius: 2px;
-      cursor: pointer;
-      outline: none;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      appearance: none;
-      width: 14px; height: 14px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 6px var(--accent-glow);
-      cursor: pointer;
-      transition: transform 0.15s;
-    }
-    input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
-    input[type="range"]::-moz-range-thumb {
-      width: 14px; height: 14px; border-radius: 50%;
-      background: var(--accent); border: none; cursor: pointer;
-    }
-
-    /* ─── CHECKBOXES ─────────────────────────────────────────── */
-    .checkboxes {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .check-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 0.5rem 0.9rem;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.72rem;
-      color: var(--text-sec);
-      transition: 0.15s;
-      user-select: none;
-    }
-    .check-label:hover { border-color: var(--accent-dim); color: var(--text); }
-    .check-label input[type="checkbox"] { display: none; }
-    .check-label .chk {
-      width: 15px; height: 15px;
-      border: 1.5px solid #2e2e2e; border-radius: 3px;
-      background: transparent; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 900; color: transparent;
-      transition: 0.15s;
-    }
-    .check-label input:checked + .chk { background: var(--accent); border-color: var(--accent); color: #050505; }
-    .check-label input:checked + .chk::after { content: '✓'; }
-    .check-label.active { border-color: var(--accent-dim); }
-
-    /* ─── HASH SECTION ───────────────────────────────────────── */
-    .section {
-      border-top: 1px solid var(--border);
-      padding-top: 20px;
-    }
-    .section-title {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-    }
-
-    .hash-label {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.62rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-top: 14px;
-      margin-bottom: 5px;
-    }
-
-    .output-wrapper {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .output {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 0.55rem 0.8rem;
-      border-radius: 5px;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.72rem;
-      color: var(--text-sec);
-      word-break: break-all;
-      transition: border-color 0.2s;
-    }
-    .output:hover { border-color: var(--border-hv); }
-
-    .copy-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      width: 32px; height: 32px;
-      border-radius: 4px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      flex-shrink: 0;
-      transition: 0.15s;
-    }
-    .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
-
-    /* ─── MAIN TABS ──────────────────────────────────────────── */
-    .main-tabs {
-      display: flex; gap: 22px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 4px;
-    }
+    .main-tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--border); }
     .main-tab {
       background: transparent; border: none;
       border-bottom: 2px solid transparent; margin-bottom: -1px;
       color: var(--text-muted); padding: 0.55rem 0.15rem 0.7rem;
       cursor: pointer; transition: 0.15s;
       font-family: 'Red Hat Display', sans-serif;
-      font-size: 0.95rem; font-weight: 900; letter-spacing: 0.02em;
+      font-size: 0.95rem; font-weight: 900;
     }
     .main-tab:hover { color: var(--text); }
     .main-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
 
-    .view { display: flex; flex-direction: column; gap: 20px; }
+    .view { display: flex; flex-direction: column; gap: 22px; }
+    .hidden { display: none; }
 
-    /* ─── SPLIT / COMBINE ────────────────────────────────────── */
-    .mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-    .mode-tab {
-      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
-      padding: 0.45rem 1rem; border-radius: 5px; cursor: pointer;
-      font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.1em; transition: 0.15s;
+    /* ─── PASSWORD ──────────────────────────────────────────── */
+    .password-box {
+      background: var(--surface);
+      border: 2px dashed var(--border-hv);
+      border-radius: 8px;
+      padding: 1.5rem 1.2rem;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 1.35rem; font-weight: 700;
+      word-break: break-all; cursor: pointer; text-align: center;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.05em;
     }
-    .mode-tab:hover { border-color: var(--accent-dim); color: var(--text); }
-    .mode-tab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
+    .password-box:hover { border-color: var(--accent); background: var(--surface2); box-shadow: 0 0 20px var(--accent-glow); }
+    .password-box:active { transform: scale(0.995); }
+    .box-hint { text-align: center; font-size: 0.78rem; color: var(--text-sec); margin-top: -14px; }
 
+    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+    .btn {
+      background: transparent; border: 1px solid var(--accent-dim); color: var(--accent);
+      padding: 0.6rem 1.2rem; border-radius: 5px; cursor: pointer;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem; font-weight: 600;
+      transition: 0.2s; white-space: nowrap;
+    }
+    .btn:hover { background: var(--accent); color: #050505; box-shadow: 0 0 12px var(--accent-glow); }
+    .btn.plain { border-color: var(--border); color: var(--text-sec); }
+    .btn.plain:hover { background: var(--surface2); color: var(--text); border-color: var(--border-hv); box-shadow: none; }
+    .btn.small { padding: 0.4rem 0.8rem; font-size: 0.78rem; }
+
+    .opt-label { font-size: 0.8rem; color: var(--text-sec); margin-bottom: 8px; }
+
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; }
+    .preset {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text-sec); padding: 0.55rem 1rem; cursor: pointer; transition: 0.15s;
+      font-family: 'IBM Plex Sans', sans-serif; font-size: 0.85rem;
+    }
+    .preset:hover { border-color: var(--accent-dim); color: var(--text); }
+    .preset.active { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
+    .preset small { display: block; font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
+    .preset.active small { color: var(--accent); }
+
+    .check-label {
+      display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 5px;
+      padding: 0.55rem 0.9rem; font-size: 0.82rem; color: var(--text-sec);
+      transition: 0.15s; user-select: none;
+    }
+    .check-label:hover { border-color: var(--accent-dim); color: var(--text); }
+    .check-label input { display: none; }
+    .check-label .chk {
+      width: 15px; height: 15px; border: 1.5px solid #2e2e2e; border-radius: 3px;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 900; color: transparent; transition: 0.15s;
+    }
+    .check-label input:checked + .chk { background: var(--accent); border-color: var(--accent); color: #050505; }
+    .check-label input:checked + .chk::after { content: '✓'; }
+    .check-label.active { border-color: var(--accent-dim); }
+
+    /* ─── SEND / OPEN ───────────────────────────────────────── */
     .field {
       width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: 5px; padding: 0.6rem 0.8rem; color: var(--text);
-      font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; line-height: 1.5;
+      border-radius: 5px; padding: 0.7rem 0.85rem; color: var(--text);
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; line-height: 1.5;
       resize: vertical; outline: none; transition: border-color 0.2s;
     }
     .field:focus { border-color: var(--accent-dim); }
-    .field::placeholder { color: var(--text-muted); }
+    .field::placeholder { color: var(--text-muted); font-family: 'IBM Plex Sans', sans-serif; }
 
-    .num-track {
-      display: flex; align-items: center; gap: 10px;
+    .part {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 5px; padding: 0.4rem 0.9rem; flex: 1; min-width: 200px;
+      border-radius: 6px; overflow: hidden;
     }
-    .num-track select {
-      margin-left: auto; background: var(--surface2); border: 1px solid var(--border);
-      color: var(--accent); border-radius: 4px; padding: 0.2rem 0.4rem; cursor: pointer;
-      font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 700; outline: none;
+    .part-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 0.6rem 0.85rem; background: var(--surface2); border-bottom: 1px solid var(--border);
     }
-
-    .share-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-    .share-tag {
-      font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
-      border: 1px solid var(--accent-dim); border-radius: 4px;
-      padding: 0.3rem 0.5rem; flex-shrink: 0; white-space: nowrap;
+    .part-num { font-size: 0.85rem; font-weight: 700; color: var(--accent); }
+    .part-msg {
+      padding: 0.85rem; font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+      line-height: 1.7; color: var(--text-sec); white-space: pre-wrap; word-break: break-all;
     }
+    .part-msg .code { color: var(--text); font-weight: 700; }
 
     .note {
       background: var(--accent-faint); border-left: 2px solid var(--accent-dim);
-      border-radius: 0 5px 5px 0; padding: 0.7rem 0.9rem; margin-top: 16px;
-      font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; line-height: 1.65;
-      color: var(--text-sec);
+      border-radius: 0 5px 5px 0; padding: 0.85rem 1rem;
+      font-size: 0.85rem; line-height: 1.7; color: var(--text-sec);
     }
-    .note b { color: var(--accent); font-weight: 700; }
+    .note b { color: var(--accent); font-weight: 600; }
     .note.bad { background: rgba(239,68,68,0.06); border-left-color: rgba(239,68,68,0.45); }
     .note.bad b { color: #ef4444; }
-    .note.good { background: rgba(34,197,94,0.06); border-left-color: rgba(34,197,94,0.45); }
-    .note.good b { color: #22c55e; }
 
     .recovered {
-      background: var(--surface); border: 1px dashed var(--border-hv); border-radius: 5px;
-      padding: 0.8rem; margin-top: 8px; font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.9rem; font-weight: 700; word-break: break-all; color: var(--text);
+      background: var(--surface); border: 1px dashed var(--border-hv); border-radius: 6px;
+      padding: 1rem; font-family: 'IBM Plex Mono', monospace; font-size: 1.05rem;
+      font-weight: 700; word-break: break-all; cursor: pointer; text-align: center;
     }
+    .recovered:hover { border-color: var(--accent); background: var(--surface2); }
 
-    .hidden { display: none; }
+    .advanced {
+      border-top: 1px solid var(--border); padding-top: 18px;
+      font-size: 0.82rem; color: var(--text-sec); line-height: 1.6;
+    }
+    .advanced a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-dim); }
+    .advanced a:hover { border-bottom-color: var(--accent); }
 
-    /* ─── TOAST ──────────────────────────────────────────────── */
     .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--accent);
-      color: #050505;
-      padding: 0.45rem 1.2rem;
-      border-radius: 20px;
-      display: none;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 0.75rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      box-shadow: 0 4px 16px var(--accent-glow);
-      z-index: 200;
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--accent); color: #050505; padding: 0.5rem 1.3rem;
+      border-radius: 20px; display: none; font-size: 0.85rem; font-weight: 700;
+      box-shadow: 0 4px 16px var(--accent-glow); z-index: 200;
     }
 
     @media (max-width: 600px) {
       .cs-info-desc { display: none; }
       .page-body { padding: 1.5rem 1rem; }
       .password-box { font-size: 1rem; }
+      .main-tabs { gap: 16px; }
+      .main-tab { font-size: 0.85rem; }
     }
   </style>
 </head>
@@ -394,407 +217,239 @@
   <div class="container">
 
     <div class="main-tabs">
-      <button class="main-tab active" id="tabPass"  onclick="goTab('pass')">Generate</button>
-      <button class="main-tab"        id="tabShare" onclick="goTab('share')">Share</button>
+      <button class="main-tab active" id="tabMake" onclick="goTab('password')">Generate a password</button>
+      <button class="main-tab"        id="tabSend" onclick="goTab('send')">Send a password</button>
+      <button class="main-tab"        id="tabOpen" onclick="goTab('open')">Discover a password</button>
     </div>
 
-    <div class="view" id="viewPass">
+    <!-- ─── MAKE ONE ─────────────────────────────────────────── -->
+    <div class="view" id="viewMake">
 
-    <p class="subheading">Generated instantly in your browser. Click the password to copy it.</p>
+      <div class="password-box" id="passwordOutput" title="Click to copy" onclick="copyPassword()">…</div>
+      <p class="box-hint">Click the password to copy it.</p>
 
-    <div class="password-box" id="passwordOutput" title="Click to copy" onclick="copyMainPassword()">Generating...</div>
-
-    <div class="controls">
-      <button class="btn" onclick="generatePassword()">↻ Generate New</button>
-      <button class="btn" onclick="shareGeneratedPassword()">⑂ Share this password</button>
-      <div class="length-track">
-        <span class="length-label">Length</span>
-        <input type="range" id="lengthRange" min="8" max="128" value="32" oninput="updateLengthDisplay()">
-        <span class="length-val" id="lengthDisplay">32</span>
+      <div class="controls">
+        <button class="btn" onclick="newPassword()">Make another</button>
+        <button class="btn plain" onclick="sendThis()">Send this safely →</button>
       </div>
+
+      <div>
+        <div class="opt-label">How long?</div>
+        <div class="presets" id="presets"></div>
+      </div>
+
+      <label class="check-label active" id="simpleLabel">
+        <input type="checkbox" id="lettersOnly" checked onchange="syncCheck(this); newPassword()">
+        <span class="chk"></span>Letters and numbers only
+      </label>
+      <p class="box-hint" style="margin-top:-14px; text-align:left">
+        Turn this off to add symbols, if the website accepts them.
+      </p>
+
     </div>
 
-    <div class="checkboxes">
-      <label class="check-label active">
-        <input type="checkbox" id="includeUpper" checked onchange="syncLabel(this); generatePassword()">
-        <span class="chk"></span>ABC
-      </label>
-      <label class="check-label active">
-        <input type="checkbox" id="includeLower" checked onchange="syncLabel(this); generatePassword()">
-        <span class="chk"></span>abc
-      </label>
-      <label class="check-label active">
-        <input type="checkbox" id="includeDigits" checked onchange="syncLabel(this); generatePassword()">
-        <span class="chk"></span>123
-      </label>
-      <label class="check-label active">
-        <input type="checkbox" id="includeSymbols" checked onchange="syncLabel(this); generatePassword()">
-        <span class="chk"></span>@#*
-      </label>
-      <label class="check-label active">
-        <input type="checkbox" id="excludeConfusing" checked onchange="syncLabel(this); generatePassword()">
-        <span class="chk"></span>Easy to read
-      </label>
+    <!-- ─── SEND IT SAFELY ───────────────────────────────────── -->
+    <div class="view hidden" id="viewSend">
+
+      <textarea class="field" id="secretInput" rows="2" oninput="scheduleSplit()"
+                spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
+                placeholder="Paste the password you need to send"></textarea>
+
+      <div id="sendError" class="note bad hidden"></div>
+      <div id="parts" style="display:flex; flex-direction:column; gap:14px"></div>
+
+      <p class="box-hint hidden" id="sendHow" style="text-align:left; margin-top:-4px">
+        Send each part a different way — one by email, one by text.
+        One part on its own gives nothing away.
+      </p>
+
+      <p class="advanced">Need more parts? <a href="https://hash.carino.systems/#share">Full version</a>.</p>
+
     </div>
 
-    <div class="section">
-      <div class="section-title">Hash Outputs</div>
+    <!-- ─── OPEN WHAT I WAS SENT ─────────────────────────────── -->
+    <div class="view hidden" id="viewOpen">
 
-      <div class="hash-label">SHA-256</div>
-      <div class="output-wrapper">
-        <div class="output" id="sha256Output">—</div>
-        <button class="copy-btn" onclick="copyToClipboard('sha256Output')" title="Copy">⧉</button>
+      <textarea class="field" id="partsInput" rows="7" oninput="scheduleOpen()"
+                spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
+                placeholder="Paste both messages here, one after the other"></textarea>
+
+      <div id="openError" class="note bad hidden"></div>
+
+      <div id="openResult" class="hidden">
+        <div class="recovered" id="openedText" title="Click to copy" onclick="copyOpened()"></div>
+        <p class="box-hint" style="margin-top:10px">Click to copy.</p>
       </div>
 
-      <div class="hash-label">SHA-1</div>
-      <div class="output-wrapper">
-        <div class="output" id="sha1Output">—</div>
-        <button class="copy-btn" onclick="copyToClipboard('sha1Output')" title="Copy">⧉</button>
-      </div>
-
-      <div class="hash-label">MD5</div>
-      <div class="output-wrapper">
-        <div class="output" id="md5Output">—</div>
-        <button class="copy-btn" onclick="copyToClipboard('md5Output')" title="Copy">⧉</button>
-      </div>
-
-      <div class="hash-label">AES-256-GCM (Random Key)</div>
-      <div class="output-wrapper">
-        <div class="output" id="aesOutput">—</div>
-        <button class="copy-btn" onclick="copyToClipboard('aesOutput')" title="Copy">⧉</button>
-      </div>
     </div>
-
-    </div><!-- /viewPass -->
-
-    <div class="view hidden" id="viewShare">
-
-    <p class="subheading">Split a secret into shares so no single channel ever carries the whole thing.</p>
-
-    <div class="section">
-      <div class="section-title">Shamir k-of-n</div>
-
-      <div class="mode-tabs">
-        <button class="mode-tab active" id="tabSplit"   onclick="goTab('split')">Split</button>
-        <button class="mode-tab"        id="tabCombine" onclick="goTab('recover')">Recover</button>
-      </div>
-
-      <div id="panelSplit">
-        <!-- spellcheck off is load-bearing: browser "enhanced" spellcheckers ship the
-             contents of text fields to a remote service, which would defeat the point. -->
-        <textarea class="field" id="splitInput" rows="2" oninput="scheduleSplit()"
-                  spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
-                  placeholder="Type or paste a secret — a password, a recovery key, an API token…"></textarea>
-
-        <div class="controls" style="margin-top:12px">
-          <button class="btn" onclick="goTab('pass')">↻ Generate a password</button>
-          <div class="num-track">
-            <span class="length-label">Total shares</span>
-            <select id="sharesTotal" onchange="syncThreshold(); scheduleSplit(0)"></select>
-          </div>
-          <div class="num-track">
-            <span class="length-label">Needed to recover</span>
-            <select id="sharesNeeded" onchange="scheduleSplit(0)"></select>
-          </div>
-        </div>
-
-        <div id="splitError" class="note bad hidden"></div>
-        <div id="sharesOut"></div>
-
-        <div class="note">
-          <b>Send every share down a different channel.</b> One by email, one by SMS, one read aloud —
-          the point is that no single inbox, phone, or chat log ever holds enough to rebuild the secret.
-          Fewer than the required number of shares reveal <b>nothing at all</b> about it: not its length,
-          not a single character. That is a mathematical guarantee, not a difficulty assumption — so
-          shares stay safe even against an attacker with unlimited computing power.
-        </div>
-      </div>
-
-      <div id="panelCombine" class="hidden">
-        <textarea class="field" id="combineInput" rows="6"
-                  spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
-                  placeholder="Paste the shares here, one per line — CS1-…"></textarea>
-
-        <div class="controls" style="margin-top:12px">
-          <button class="btn" onclick="doRecover()">⚯ Recover secret</button>
-        </div>
-
-        <div id="recoverError" class="note bad hidden"></div>
-        <div id="recoverOut" class="hidden">
-          <div class="hash-label">Recovered secret</div>
-          <div class="share-row">
-            <div class="recovered" id="recoveredText" style="flex:1"></div>
-            <button class="copy-btn" onclick="copyToClipboard('recoveredText')" title="Copy">⧉</button>
-          </div>
-          <div class="note good"><b>Integrity verified.</b> The rebuilt secret matches the checksum
-          carried inside the shares, so no share was mistyped or swapped.</div>
-        </div>
-      </div>
-    </div>
-
-    </div><!-- /viewShare -->
 
   </div>
 </div>
 
-<div id="toast" class="toast">Copied!</div>
+<div id="toast" class="toast">Copied</div>
 
+<script src="carino-secrets.js"></script>
 <script>
-  const passwordBox = document.getElementById('passwordOutput');
-  const rangeInput  = document.getElementById('lengthRange');
+  const CS  = window.CarinoSecrets;
+  const $   = id => document.getElementById(id);
+  const box = $('passwordOutput');
 
-  const charsetOptions = {
-    upper:    'ABCDEFGHJKLMNPQRSTUVWXYZ',
-    lower:    'abcdefghjkmnpqrstuvwxyz',
-    digits:   '23456789',
-    symbols:  '!@#$%^&*()_+-=[]{}|;:\',./<>?',
-    confusing:'iIl1oO0'
-  };
+  /* ─── Making a password ─────────────────────────────────────────────── */
+  // Ambiguous characters are always excluded: this password will be read off a
+  // screen and typed by hand, and 1/l/I costs more than the entropy is worth.
+  const ALPHA   = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz';
+  const DIGITS  = '23456789';
+  const SYMBOLS = '!@#$%&*+-=?';
+  const LENGTHS = [
+    { label: 'Short',  len: 12, note: '12 characters' },
+    { label: 'Medium', len: 20, note: '20 characters' },
+    { label: 'Long',   len: 32, note: '32 characters' },
+  ];
+  let chosen = 0;
 
-  window.onload = () => generatePassword();
-
-  // Scroll wheel on range input
-  rangeInput.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    rangeInput.value = parseInt(rangeInput.value) + (e.deltaY < 0 ? 1 : -1);
-    updateLengthDisplay();
-    generatePassword();
-  });
-
-  function updateLengthDisplay() {
-    document.getElementById('lengthDisplay').textContent = rangeInput.value;
-  }
-
-  function syncLabel(cb) {
-    cb.closest('.check-label').classList.toggle('active', cb.checked);
-  }
-
-  function showToast() {
-    const t = document.getElementById('toast');
-    t.style.display = 'block';
-    setTimeout(() => { t.style.display = 'none'; }, 1400);
-  }
-
-  function copyMainPassword() {
-    const text = passwordBox.textContent;
-    if (text === 'Select at least one character type.') return;
-    navigator.clipboard.writeText(text).then(showToast);
-  }
-
-  function copyToClipboard(id) {
-    navigator.clipboard.writeText(document.getElementById(id).textContent).then(showToast);
-  }
-
-  function generatePassword() {
-    let charset = '';
-    if (document.getElementById('includeUpper').checked)  charset += charsetOptions.upper;
-    if (document.getElementById('includeLower').checked)  charset += charsetOptions.lower;
-    if (document.getElementById('includeDigits').checked) charset += charsetOptions.digits;
-    if (document.getElementById('includeSymbols').checked)charset += charsetOptions.symbols;
-
-    if (!charset) {
-      passwordBox.textContent = 'Select at least one character type.';
-      return;
-    }
-    if (document.getElementById('excludeConfusing').checked) {
-      charset = charset.split('').filter(ch => !charsetOptions.confusing.includes(ch)).join('');
-    }
-
-    const length = parseInt(rangeInput.value, 10);
-    const array  = new Uint32Array(length);
-    window.crypto.getRandomValues(array);
-    const password = Array.from(array, v => charset[v % charset.length]).join('');
-
-    passwordBox.textContent = password;
-    updateHashes(password);
-    encryptAES(password);
-  }
-
-  async function updateHashes(password) {
-    const data = new TextEncoder().encode(password);
-    const [s256, s1] = await Promise.all([
-      crypto.subtle.digest('SHA-256', data),
-      crypto.subtle.digest('SHA-1',   data),
-    ]);
-    const hex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-    document.getElementById('sha256Output').textContent = hex(s256);
-    document.getElementById('sha1Output').textContent   = hex(s1);
-    document.getElementById('md5Output').textContent    = md5(password);
-  }
-
-  async function encryptAES(password) {
-    const enc = new TextEncoder();
-    const iv  = crypto.getRandomValues(new Uint8Array(12));
-    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
-    const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(password));
-    const b64 = arr => btoa(String.fromCharCode(...new Uint8Array(arr)));
-    document.getElementById('aesOutput').textContent = `IV:${b64(iv)} | Cipher:${b64(ct)}`;
-  }
-
-  /* ═══ SECRET SPLITTING — Shamir's Secret Sharing over GF(256) ═══════════
-     Each byte of the secret becomes the constant term of a random degree-(k-1)
-     polynomial; share i is that polynomial evaluated at x=i. Any k shares
-     interpolate back to x=0; any k-1 shares leave every value equally likely,
-     so they carry zero information. Field is x^8+x^4+x^3+x^2+1 (0x11d).      */
-
-  const GF_EXP = new Uint8Array(512), GF_LOG = new Uint8Array(256);
-  (function initGF() {
-    let x = 1;
-    for (let i = 0; i < 255; i++) {
-      GF_EXP[i] = x; GF_LOG[x] = i;
-      x <<= 1;
-      if (x & 0x100) x ^= 0x11d;
-    }
-    for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+  (function buildPresets() {
+    const wrap = $('presets');
+    LENGTHS.forEach((p, i) => {
+      const b = document.createElement('button');
+      b.className = 'preset' + (i === chosen ? ' active' : '');
+      b.innerHTML = '';
+      b.appendChild(document.createTextNode(p.label));
+      const s = document.createElement('small');
+      s.textContent = p.note;
+      b.appendChild(s);
+      b.onclick = () => {
+        chosen = i;
+        [...wrap.children].forEach((c, j) => c.classList.toggle('active', j === i));
+        newPassword();
+      };
+      wrap.appendChild(b);
+    });
   })();
 
-  const gmul = (a, b) => (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
-  const gdiv = (a, b) => (a === 0) ? 0 : GF_EXP[GF_LOG[a] + 255 - GF_LOG[b]];
-
-  function gfSplit(bytes, n, k) {
-    const shares = [];
-    for (let i = 1; i <= n; i++) shares.push({ x: i, y: new Uint8Array(bytes.length) });
-    const coeffs = new Uint8Array(k - 1);
-    for (let b = 0; b < bytes.length; b++) {
-      crypto.getRandomValues(coeffs);              // fresh polynomial per byte
-      for (const s of shares) {
-        let acc = 0;                               // Horner, highest term first
-        for (let j = k - 2; j >= 0; j--) acc = gmul(acc, s.x) ^ coeffs[j];
-        s.y[b] = gmul(acc, s.x) ^ bytes[b];
-      }
-    }
-    return shares;
+  function newPassword() {
+    let set = ALPHA + DIGITS;
+    if (!$('lettersOnly').checked) set += SYMBOLS;
+    const n = LENGTHS[chosen].len;
+    const r = new Uint32Array(n);
+    crypto.getRandomValues(r);
+    // Rejection-free modulo bias is negligible here (2^32 vs a ~57-char set),
+    // but draw fresh values rather than reusing any.
+    box.textContent = Array.from(r, v => set[v % set.length]).join('');
   }
 
-  function gfCombine(shares, len) {
-    const out = new Uint8Array(len);
-    for (let b = 0; b < len; b++) {
-      let acc = 0;
-      for (let i = 0; i < shares.length; i++) {
-        let num = 1, den = 1;                      // Lagrange basis evaluated at 0
-        for (let j = 0; j < shares.length; j++) {
-          if (i === j) continue;
-          num = gmul(num, shares[j].x);
-          den = gmul(den, shares[i].x ^ shares[j].x);
-        }
-        acc ^= gmul(shares[i].y[b], gdiv(num, den));
-      }
-      out[b] = acc;
-    }
-    return out;
+  function syncCheck(cb) { cb.closest('.check-label').classList.toggle('active', cb.checked); }
+
+  function copyPassword() { copy(box.textContent); }
+  function copyOpened()   { copy($('openedText').textContent); }
+
+  function copy(text) {
+    if (!text) return;
+    navigator.clipboard.writeText(text).then(() => {
+      const t = $('toast');
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 1400);
+    });
   }
 
-  /* Crockford base32 — no I, L, O or U, so shares survive being read aloud
-     or copied by hand. Decoding folds the look-alikes back in.               */
-  const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-
-  function b32enc(bytes) {
-    let bits = 0, val = 0, out = '';
-    for (const b of bytes) {
-      val = (val << 8) | b; bits += 8;
-      while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; }
-    }
-    if (bits > 0) out += B32[(val << (5 - bits)) & 31];
-    return out;
+  /* ─── Sending it safely ─────────────────────────────────────────────── */
+  function sendThis() {
+    $('secretInput').value = box.textContent;
+    goTab('send');
+    runSplit();
   }
 
-  function b32dec(str) {
-    const s = str.toUpperCase().replace(/[^0-9A-Z]/g, '')
-                 .replace(/O/g, '0').replace(/[IL]/g, '1');
-    let bits = 0, val = 0; const out = [];
-    for (const c of s) {
-      const idx = B32.indexOf(c);
-      if (idx < 0) throw new Error(`invalid character "${c}"`);
-      val = (val << 5) | idx; bits += 5;
-      if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
-    }
-    return new Uint8Array(out);
+  let splitTimer = null;
+  function scheduleSplit(delay = 220) { clearTimeout(splitTimer); splitTimer = setTimeout(runSplit, delay); }
+
+  async function runSplit() {
+    clearTimeout(splitTimer);
+    const parts = $('parts');
+    parts.textContent = '';
+    $('sendError').classList.add('hidden');
+    $('sendHow').classList.add('hidden');
+
+    const secret = $('secretInput').value;
+    if (!secret) return;                       // empty box: clear, don't scold
+
+    let shares;
+    try { shares = await CS.split(secret, 2, 2); }
+    catch (e) { return fail('sendError', e.message); }
+
+    shares.forEach(s => {
+      const card = document.createElement('div');
+      card.className = 'part';
+
+      const head = document.createElement('div');
+      head.className = 'part-head';
+      const num = document.createElement('span');
+      num.className = 'part-num';
+      num.textContent = `Part ${s.index} of ${s.total}`;
+      const btn = document.createElement('button');
+      btn.className = 'btn small';
+      btn.textContent = 'Copy';
+      btn.onclick = () => copy(s.text);
+      head.append(num, btn);
+
+      const body = document.createElement('pre');
+      body.className = 'part-msg';
+      body.textContent = s.text;
+
+      card.append(head, body);
+      parts.appendChild(card);
+    });
+
+    $('sendHow').classList.remove('hidden');
   }
 
-  function crc16(bytes) {
-    let crc = 0xffff;
-    for (const b of bytes) {
-      crc ^= b << 8;
-      for (let i = 0; i < 8; i++)
-        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
-    }
-    return crc;
+  /* ─── Opening what you were sent ────────────────────────────────────── */
+  let openTimer = null;
+  function scheduleOpen(delay = 300) { clearTimeout(openTimer); openTimer = setTimeout(runOpen, delay); }
+
+  async function runOpen() {
+    clearTimeout(openTimer);
+    $('openError').classList.add('hidden');
+    $('openResult').classList.add('hidden');
+
+    const text = $('partsInput').value;
+    if (!/CS[1IL]-/i.test(text)) return;       // nothing that looks like a part yet
+
+    let out;
+    try { out = await CS.recover(text); }
+    catch (e) { return fail('openError', e.message); }
+
+    $('openedText').textContent = out.secret;
+    $('openResult').classList.remove('hidden');
   }
 
-  /* Wire format: CS1-<base32 of [ver, k, x, ...y, crc16-hi, crc16-lo]> */
-  function encodeShare(k, x, y) {
-    const p = new Uint8Array(3 + y.length);
-    p[0] = 1; p[1] = k; p[2] = x; p.set(y, 3);
-    const c = crc16(p);
-    const full = new Uint8Array(p.length + 2);
-    full.set(p); full[p.length] = c >> 8; full[p.length + 1] = c & 0xff;
-    return 'CS1-' + (b32enc(full).match(/.{1,5}/g) || []).join('-');
+  // Text nodes, not innerHTML: these messages quote what was pasted in.
+  function fail(id, msg) {
+    const el = $(id);
+    el.textContent = '';
+    const b = document.createElement('b');
+    b.textContent = 'That did not work.';
+    el.append(b, document.createTextNode(' ' + msg.charAt(0).toUpperCase() + msg.slice(1) + '.'));
+    el.classList.remove('hidden');
   }
 
-  function decodeShare(str) {
-    const t = str.trim().toUpperCase();
-    if (!/^CS[1IL]-/.test(t)) throw new Error('every line must start with CS1-');
-    const full = b32dec(t.slice(4));                 // prefix tolerates a hand-copied "CSI-"
-    if (full.length < 6) throw new Error('a share is truncated');
-    const p = full.slice(0, -2);
-    const c = (full[full.length - 2] << 8) | full[full.length - 1];
-    if (crc16(p) !== c) throw new Error('a share failed its checksum — it was mistyped');
-    if (p[0] !== 1) throw new Error(`unknown share format (v${p[0]})`);
-    if (p[2] === 0)  throw new Error('a share carries an invalid index');
-    return { k: p[1], x: p[2], y: p.slice(3) };
-  }
-
-  /* ─── UI ─────────────────────────────────────────────────────────────── */
-  const MAX_SHARES = 10, TAG_LEN = 3;
-
-  (function initShareSelects() {
-    const total = document.getElementById('sharesTotal');
-    for (let i = 2; i <= MAX_SHARES; i++) total.add(new Option(i, i));
-    total.value = 2;
-    syncThreshold();
-  })();
-
-  function syncThreshold() {
-    const total  = parseInt(document.getElementById('sharesTotal').value, 10);
-    const needed = document.getElementById('sharesNeeded');
-    const prev   = parseInt(needed.value, 10) || 2;
-    needed.innerHTML = '';
-    for (let i = 2; i <= total; i++) needed.add(new Option(i, i));
-    needed.value = Math.min(prev, total);
-  }
-
-  function setSplitMode(mode) {
-    const isSplit = mode === 'split';
-    document.getElementById('panelSplit').classList.toggle('hidden', !isSplit);
-    document.getElementById('panelCombine').classList.toggle('hidden', isSplit);
-    document.getElementById('tabSplit').classList.toggle('active', isSplit);
-    document.getElementById('tabCombine').classList.toggle('active', !isSplit);
-  }
-
-  /* ─── Hash routing — #pass / #share (also #split, #recover) ──────────── */
+  /* ─── Tabs, addressable by link ─────────────────────────────────────── */
   const ROUTES = {
-    pass:     { view: 'pass'  },
-    password: { view: 'pass'  },
-    generate: { view: 'pass'  },
-    share:    { view: 'share' },
-    split:    { view: 'share', mode: 'split'   },
-    recover:  { view: 'share', mode: 'combine' },
-    combine:  { view: 'share', mode: 'combine' },
+    password: 'make', pass: 'make', generate: 'make', make: 'make',
+    send: 'send', share: 'send', split: 'send',
+    open: 'open', recover: 'open', combine: 'open',
   };
 
   function applyRoute() {
-    const key   = location.hash.replace(/^#\/?/, '').toLowerCase();
-    const route = ROUTES[key] || ROUTES.pass;
-    const isPass = route.view === 'pass';
-    document.getElementById('viewPass').classList.toggle('hidden', !isPass);
-    document.getElementById('viewShare').classList.toggle('hidden', isPass);
-    document.getElementById('tabPass').classList.toggle('active', isPass);
-    document.getElementById('tabShare').classList.toggle('active', !isPass);
-    if (route.mode) setSplitMode(route.mode);
+    const key  = location.hash.replace(/^#\/?/, '').toLowerCase();
+    const view = ROUTES[key] || 'make';
+    for (const [name, tab] of [['Make','tabMake'], ['Send','tabSend'], ['Open','tabOpen']]) {
+      const on = name.toLowerCase() === view;
+      $('view' + name).classList.toggle('hidden', !on);
+      $(tab).classList.toggle('active', on);
+    }
   }
 
-  // Clicking a tab writes the hash; the hashchange listener does the actual
-  // switching, so Back returns to the previous tab and links stay shareable.
+  // Clicking writes the hash; the listener does the switching, so Back works
+  // and every tab is a link you can send someone.
   function goTab(name) {
     if (location.hash.replace(/^#\/?/, '').toLowerCase() === name) return applyRoute();
     location.hash = name;
@@ -802,137 +457,8 @@
 
   window.addEventListener('hashchange', applyRoute);
   applyRoute();
-
-  // Hand the generated password to the Share tab, already split.
-  function shareGeneratedPassword() {
-    const text = passwordBox.textContent;
-    if (text === 'Select at least one character type.' || text === 'Generating...') return;
-    document.getElementById('splitInput').value = text;
-    goTab('split');
-    autoSplit();                        // .value set in code fires no input event
-  }
-
-  // Re-split as the secret is typed or pasted. Each run draws fresh randomness,
-  // so the shares on screen always belong to the text currently in the box.
-  let splitTimer = null;
-  function scheduleSplit(delay = 220) {
-    clearTimeout(splitTimer);
-    splitTimer = setTimeout(autoSplit, delay);
-  }
-
-  function autoSplit() {
-    clearTimeout(splitTimer);
-    if (document.getElementById('splitInput').value) return doSplit();
-    document.getElementById('sharesOut').innerHTML = '';   // empty box: clear, don't scold
-    document.getElementById('splitError').classList.add('hidden');
-  }
-
-  // Built as text nodes, not innerHTML: decode errors quote the offending
-  // character, and that character comes from whatever was pasted in.
-  function showError(id, msg) {
-    const el = document.getElementById(id);
-    el.textContent = '';
-    const lead = document.createElement('b');
-    lead.textContent = "Couldn't do that.";
-    el.append(lead, document.createTextNode(' ' + msg));
-    el.classList.remove('hidden');
-  }
-
-  async function tagOf(bytes) {
-    return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)).slice(0, TAG_LEN);
-  }
-
-  async function doSplit() {
-    const out = document.getElementById('sharesOut');
-    out.innerHTML = '';
-    document.getElementById('splitError').classList.add('hidden');
-
-    const secret = document.getElementById('splitInput').value;
-    if (!secret) return showError('splitError', 'Enter a secret to split first.');
-
-    const body = new TextEncoder().encode(secret);
-    if (body.length > 512)
-      return showError('splitError', 'Keep the secret under 512 bytes — this is built for keys and passwords, not documents.');
-
-    const n = parseInt(document.getElementById('sharesTotal').value, 10);
-    const k = parseInt(document.getElementById('sharesNeeded').value, 10);
-
-    // The checksum rides inside the split payload, so it leaks nothing on its own.
-    const blob = new Uint8Array(body.length + TAG_LEN);
-    blob.set(body); blob.set(await tagOf(body), body.length);
-
-    for (const s of gfSplit(blob, n, k)) {
-      const text = encodeShare(k, s.x, s.y);
-      const row  = document.createElement('div');
-      row.className = 'share-row';
-
-      const tag = document.createElement('span');
-      tag.className = 'share-tag';
-      tag.textContent = `${s.x} / ${n}`;
-
-      const val = document.createElement('div');
-      val.className = 'output';
-      val.textContent = text;
-
-      const btn = document.createElement('button');
-      btn.className = 'copy-btn'; btn.title = 'Copy'; btn.textContent = '⧉';
-      btn.onclick = () => navigator.clipboard.writeText(text).then(showToast);
-
-      row.append(tag, val, btn);
-      out.appendChild(row);
-    }
-
-    const hint = document.createElement('div');
-    hint.className = 'note';
-    hint.innerHTML = (n === k
-        ? `<b>${n} shares created — every one is needed.</b> Lose a single share and the secret is
-           gone for good, so this suits a hand-off rather than a backup. `
-        : `<b>${n} shares created — any ${k} rebuild the secret.</b> Losing up to ${n - k} of
-           them costs you nothing. `) +
-      `Anyone holding ${k - 1} of them learns nothing at all. ` +
-      `Nothing was uploaded: the split happened in this tab, and closing it erases every trace.`;
-    out.appendChild(hint);
-  }
-
-  async function doRecover() {
-    document.getElementById('recoverError').classList.add('hidden');
-    document.getElementById('recoverOut').classList.add('hidden');
-
-    const lines = document.getElementById('combineInput').value
-      .split('\n').map(l => l.trim()).filter(Boolean);
-    if (!lines.length) return showError('recoverError', 'Paste your shares first, one per line.');
-
-    let parsed;
-    try { parsed = lines.map(decodeShare); }
-    catch (e) { return showError('recoverError', e.message + '.'); }
-
-    const len = parsed[0].y.length;
-    if (parsed.some(s => s.y.length !== len))
-      return showError('recoverError', 'These shares are different lengths — they come from different secrets.');
-
-    const seen = new Set();
-    for (const s of parsed) {
-      if (seen.has(s.x)) return showError('recoverError', `Share ${s.x} was pasted twice — each share must be distinct.`);
-      seen.add(s.x);
-    }
-
-    const k = parsed[0].k;
-    if (parsed.length < k)
-      return showError('recoverError', `This secret needs ${k} shares and you have ${parsed.length}. Missing shares cannot be guessed or brute-forced — you need the real ones.`);
-
-    const blob = gfCombine(parsed.slice(0, k), len);
-    const body = blob.slice(0, -TAG_LEN), tag = blob.slice(-TAG_LEN);
-    const want = await tagOf(body);
-    if (!tag.every((b, i) => b === want[i]))
-      return showError('recoverError', 'The shares did not verify. They are individually well-formed but belong to different secrets, or one has been altered.');
-
-    document.getElementById('recoveredText').textContent = new TextDecoder().decode(body);
-    document.getElementById('recoverOut').classList.remove('hidden');
-  }
-
-  /* MD5 */
-  function md5(e){function h(a,b){var c=(a&65535)+(b&65535);return(a>>16)+(b>>16)+(c>>16)<<16|c&65535}function k(a,b,c,d,e,f){return h((g=h(h(b,a),h(d,f)))<<e|g>>>32-e,c);var g}function m(a,b,c,d,e,f,g){return k(b&c|~b&d,a,b,e,f,g)}function n(a,b,c,d,e,f,g){return k(b&d|c&~d,a,b,e,f,g)}function p(a,b,c,d,e,f,g){return k(b^c^d,a,b,e,f,g)}function q(a,b,c,d,e,f,g){return k(c^(b|~d),a,b,e,f,g)}function r(a){var b="",c=32*a.length;for(let d=0;d<c;d+=8)b+=String.fromCharCode(a[d>>5]>>>d%32&255);return b}function s(a){var b=[];b[(a.length>>2)-1]=void 0;for(let c=0;c<b.length;c++)b[c]=0;for(let c=0;c<8*a.length;c+=8)b[c>>5]|=(255&a.charCodeAt(c/8))<<c%32;return b}function t(a){for(var b="0123456789abcdef",c="",d=0;d<a.length;d++)c+=b.charAt(a.charCodeAt(d)>>4&15)+b.charAt(15&a.charCodeAt(d));return c}function u(a){return unescape(encodeURIComponent(a))}var f=[1732584193,-271733879,-1732584194,271733878],l=s(u(e));l[l.length>>5]|=128<<l.length%32,l[14+(l.length+64>>>9<<4)]=8*e.length;for(let a=0;a<l.length;a+=16){var b=f[0],c=f[1],d=f[2],g=f[3];f[0]=m(f[0],f[1],f[2],f[3],l[a],7,-680876936),f[3]=m(f[3],f[0],f[1],f[2],l[a+1],12,-389564586),f[2]=m(f[2],f[3],f[0],f[1],l[a+2],17,606105819),f[1]=m(f[1],f[2],f[3],f[0],l[a+3],22,-1044525330),f[0]=m(f[0],f[1],f[2],f[3],l[a+4],7,-176418897),f[3]=m(f[3],f[0],f[1],f[2],l[a+5],12,1200080426),f[2]=m(f[2],f[3],f[0],f[1],l[a+6],17,-1473231341),f[1]=m(f[1],f[2],f[3],f[0],l[a+7],22,-45705983),f[0]=m(f[0],f[1],f[2],f[3],l[a+8],7,1770035416),f[3]=m(f[3],f[0],f[1],f[2],l[a+9],12,-1958414417),f[2]=m(f[2],f[3],f[0],f[1],l[a+10],17,-42063),f[1]=m(f[1],f[2],f[3],f[0],l[a+11],22,-1990404162),f[0]=m(f[0],f[1],f[2],f[3],l[a+12],7,1804603682),f[3]=m(f[3],f[0],f[1],f[2],l[a+13],12,-40341101),f[2]=m(f[2],f[3],f[0],f[1],l[a+14],17,-1502002290),f[1]=m(f[1],f[2],f[3],f[0],l[a+15],22,1236535329),f[0]=n(f[0],f[1],f[2],f[3],l[a+1],5,-165796510),f[3]=n(f[3],f[0],f[1],f[2],l[a+6],9,-1069501632),f[2]=n(f[2],f[3],f[0],f[1],l[a+11],14,643717713),f[1]=n(f[1],f[2],f[3],f[0],l[a],20,-373897302),f[0]=n(f[0],f[1],f[2],f[3],l[a+5],5,-701558691),f[3]=n(f[3],f[0],f[1],f[2],l[a+10],9,38016083),f[2]=n(f[2],f[3],f[0],f[1],l[a+15],14,-660478335),f[1]=n(f[1],f[2],f[3],f[0],l[a+4],20,-405537848),f[0]=n(f[0],f[1],f[2],f[3],l[a+9],5,568446438),f[3]=n(f[3],f[0],f[1],f[2],l[a+14],9,-1019803690),f[2]=n(f[2],f[3],f[0],f[1],l[a+3],14,-187363961),f[1]=n(f[1],f[2],f[3],f[0],l[a+8],20,1163531501),f[0]=n(f[0],f[1],f[2],f[3],l[a+13],5,-1444681467),f[3]=n(f[3],f[0],f[1],f[2],l[a+2],9,-51403784),f[2]=n(f[2],f[3],f[0],f[1],l[a+7],14,1735328473),f[1]=n(f[1],f[2],f[3],f[0],l[a+12],20,-1926607734),f[0]=p(f[0],f[1],f[2],f[3],l[a+5],4,-378558),f[3]=p(f[3],f[0],f[1],f[2],l[a+8],11,-2022574463),f[2]=p(f[2],f[3],f[0],f[1],l[a+11],16,1839030562),f[1]=p(f[1],f[2],f[3],f[0],l[a+14],23,-35309556),f[0]=p(f[0],f[1],f[2],f[3],l[a+1],4,-1530992060),f[3]=p(f[3],f[0],f[1],f[2],l[a+4],11,1272893353),f[2]=p(f[2],f[3],f[0],f[1],l[a+7],16,-155497632),f[1]=p(f[1],f[2],f[3],f[0],l[a+10],23,-1094730640),f[0]=p(f[0],f[1],f[2],f[3],l[a+13],4,681279174),f[3]=p(f[3],f[0],f[1],f[2],l[a],11,-358537222),f[2]=p(f[2],f[3],f[0],f[1],l[a+3],16,-722521979),f[1]=p(f[1],f[2],f[3],f[0],l[a+6],23,76029189),f[0]=p(f[0],f[1],f[2],f[3],l[a+9],4,-640364487),f[3]=p(f[3],f[0],f[1],f[2],l[a+12],11,-421815835),f[2]=p(f[2],f[3],f[0],f[1],l[a+15],16,530742520),f[1]=p(f[1],f[2],f[3],f[0],l[a+2],23,-995338651),f[0]=q(f[0],f[1],f[2],f[3],l[a],6,-198630844),f[3]=q(f[3],f[0],f[1],f[2],l[a+7],10,1126891415),f[2]=q(f[2],f[3],f[0],f[1],l[a+14],15,-1416354905),f[1]=q(f[1],f[2],f[3],f[0],l[a+5],21,-57434055),f[0]=q(f[0],f[1],f[2],f[3],l[a+12],6,1700485571),f[3]=q(f[3],f[0],f[1],f[2],l[a+3],10,-1894986606),f[2]=q(f[2],f[3],f[0],f[1],l[a+10],15,-1051523),f[1]=q(f[1],f[2],f[3],f[0],l[a+1],21,-2054922799),f[0]=q(f[0],f[1],f[2],f[3],l[a+8],6,1873313359),f[3]=q(f[3],f[0],f[1],f[2],l[a+15],10,-30611744),f[2]=q(f[2],f[3],f[0],f[1],l[a+6],15,-1560198380),f[1]=q(f[1],f[2],f[3],f[0],l[a+13],21,1309151649),f[0]=q(f[0],f[1],f[2],f[3],l[a+4],6,-145523070),f[3]=q(f[3],f[0],f[1],f[2],l[a+11],10,-1120210379),f[2]=q(f[2],f[3],f[0],f[1],l[a+2],15,718787259),f[1]=q(f[1],f[2],f[3],f[0],l[a+9],21,-343485551),f[0]=h(f[0],b),f[1]=h(f[1],c),f[2]=h(f[2],d),f[3]=h(f[3],g)}return t(r(f))}
+  newPassword();
 </script>
-<script src="carino-navbar.js" data-app="PassGen" defer></script>
+<script src="carino-navbar.js" data-app="Password" defer></script>
 </body>
 </html>

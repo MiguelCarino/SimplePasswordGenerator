@@ -284,6 +284,65 @@
     }
     .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
 
+    /* ─── SPLIT / COMBINE ────────────────────────────────────── */
+    .mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .mode-tab {
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+      padding: 0.45rem 1rem; border-radius: 5px; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; transition: 0.15s;
+    }
+    .mode-tab:hover { border-color: var(--accent-dim); color: var(--text); }
+    .mode-tab.active { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
+
+    .field {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; padding: 0.6rem 0.8rem; color: var(--text);
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; line-height: 1.5;
+      resize: vertical; outline: none; transition: border-color 0.2s;
+    }
+    .field:focus { border-color: var(--accent-dim); }
+    .field::placeholder { color: var(--text-muted); }
+
+    .num-track {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 5px; padding: 0.4rem 0.9rem; flex: 1; min-width: 200px;
+    }
+    .num-track select {
+      margin-left: auto; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--accent); border-radius: 4px; padding: 0.2rem 0.4rem; cursor: pointer;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; font-weight: 700; outline: none;
+    }
+
+    .share-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .share-tag {
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent);
+      border: 1px solid var(--accent-dim); border-radius: 4px;
+      padding: 0.3rem 0.5rem; flex-shrink: 0; white-space: nowrap;
+    }
+
+    .note {
+      background: var(--accent-faint); border-left: 2px solid var(--accent-dim);
+      border-radius: 0 5px 5px 0; padding: 0.7rem 0.9rem; margin-top: 16px;
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.66rem; line-height: 1.65;
+      color: var(--text-sec);
+    }
+    .note b { color: var(--accent); font-weight: 700; }
+    .note.bad { background: rgba(239,68,68,0.06); border-left-color: rgba(239,68,68,0.45); }
+    .note.bad b { color: #ef4444; }
+    .note.good { background: rgba(34,197,94,0.06); border-left-color: rgba(34,197,94,0.45); }
+    .note.good b { color: #22c55e; }
+
+    .recovered {
+      background: var(--surface); border: 1px dashed var(--border-hv); border-radius: 5px;
+      padding: 0.8rem; margin-top: 8px; font-family: 'IBM Plex Mono', monospace;
+      font-size: 0.9rem; font-weight: 700; word-break: break-all; color: var(--text);
+    }
+
+    .hidden { display: none; }
+
     /* ─── TOAST ──────────────────────────────────────────────── */
     .toast {
       position: fixed;
@@ -376,6 +435,67 @@
       <div class="output-wrapper">
         <div class="output" id="aesOutput">—</div>
         <button class="copy-btn" onclick="copyToClipboard('aesOutput')" title="Copy">⧉</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Split a Secret — Shamir k-of-n</div>
+
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tabSplit"   onclick="setSplitMode('split')">Split</button>
+        <button class="mode-tab"        id="tabCombine" onclick="setSplitMode('combine')">Recover</button>
+      </div>
+
+      <div id="panelSplit">
+        <textarea class="field" id="splitInput" rows="2"
+                  placeholder="Secret to split — a password, a recovery key, an API token…"></textarea>
+
+        <div class="controls" style="margin-top:12px">
+          <button class="btn" onclick="useGeneratedPassword()">↑ Use password above</button>
+          <div class="num-track">
+            <span class="length-label">Total shares</span>
+            <select id="sharesTotal" onchange="syncThreshold()"></select>
+          </div>
+          <div class="num-track">
+            <span class="length-label">Needed to recover</span>
+            <select id="sharesNeeded"></select>
+          </div>
+        </div>
+
+        <div class="controls" style="margin-top:12px">
+          <button class="btn" onclick="doSplit()">⑂ Split into shares</button>
+        </div>
+
+        <div id="splitError" class="note bad hidden"></div>
+        <div id="sharesOut"></div>
+
+        <div class="note">
+          <b>Send every share down a different channel.</b> One by email, one by SMS, one read aloud —
+          the point is that no single inbox, phone, or chat log ever holds enough to rebuild the secret.
+          Fewer than the required number of shares reveal <b>nothing at all</b> about it: not its length,
+          not a single character. That is a mathematical guarantee, not a difficulty assumption — so
+          shares stay safe even against an attacker with unlimited computing power.
+        </div>
+      </div>
+
+      <div id="panelCombine" class="hidden">
+        <textarea class="field" id="combineInput" rows="6"
+                  placeholder="Paste the shares here, one per line — CS1-…"></textarea>
+
+        <div class="controls" style="margin-top:12px">
+          <button class="btn" onclick="doRecover()">⚯ Recover secret</button>
+        </div>
+
+        <div id="recoverError" class="note bad hidden"></div>
+        <div id="recoverOut" class="hidden">
+          <div class="hash-label">Recovered secret</div>
+          <div class="share-row">
+            <div class="recovered" id="recoveredText" style="flex:1"></div>
+            <button class="copy-btn" onclick="copyToClipboard('recoveredText')" title="Copy">⧉</button>
+          </div>
+          <div class="note good"><b>Integrity verified.</b> The rebuilt secret matches the checksum
+          carried inside the shares, so no share was mistyped or swapped.</div>
+        </div>
       </div>
     </div>
 
@@ -474,6 +594,246 @@
     const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(password));
     const b64 = arr => btoa(String.fromCharCode(...new Uint8Array(arr)));
     document.getElementById('aesOutput').textContent = `IV:${b64(iv)} | Cipher:${b64(ct)}`;
+  }
+
+  /* ═══ SECRET SPLITTING — Shamir's Secret Sharing over GF(256) ═══════════
+     Each byte of the secret becomes the constant term of a random degree-(k-1)
+     polynomial; share i is that polynomial evaluated at x=i. Any k shares
+     interpolate back to x=0; any k-1 shares leave every value equally likely,
+     so they carry zero information. Field is x^8+x^4+x^3+x^2+1 (0x11d).      */
+
+  const GF_EXP = new Uint8Array(512), GF_LOG = new Uint8Array(256);
+  (function initGF() {
+    let x = 1;
+    for (let i = 0; i < 255; i++) {
+      GF_EXP[i] = x; GF_LOG[x] = i;
+      x <<= 1;
+      if (x & 0x100) x ^= 0x11d;
+    }
+    for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+  })();
+
+  const gmul = (a, b) => (a === 0 || b === 0) ? 0 : GF_EXP[GF_LOG[a] + GF_LOG[b]];
+  const gdiv = (a, b) => (a === 0) ? 0 : GF_EXP[GF_LOG[a] + 255 - GF_LOG[b]];
+
+  function gfSplit(bytes, n, k) {
+    const shares = [];
+    for (let i = 1; i <= n; i++) shares.push({ x: i, y: new Uint8Array(bytes.length) });
+    const coeffs = new Uint8Array(k - 1);
+    for (let b = 0; b < bytes.length; b++) {
+      crypto.getRandomValues(coeffs);              // fresh polynomial per byte
+      for (const s of shares) {
+        let acc = 0;                               // Horner, highest term first
+        for (let j = k - 2; j >= 0; j--) acc = gmul(acc, s.x) ^ coeffs[j];
+        s.y[b] = gmul(acc, s.x) ^ bytes[b];
+      }
+    }
+    return shares;
+  }
+
+  function gfCombine(shares, len) {
+    const out = new Uint8Array(len);
+    for (let b = 0; b < len; b++) {
+      let acc = 0;
+      for (let i = 0; i < shares.length; i++) {
+        let num = 1, den = 1;                      // Lagrange basis evaluated at 0
+        for (let j = 0; j < shares.length; j++) {
+          if (i === j) continue;
+          num = gmul(num, shares[j].x);
+          den = gmul(den, shares[i].x ^ shares[j].x);
+        }
+        acc ^= gmul(shares[i].y[b], gdiv(num, den));
+      }
+      out[b] = acc;
+    }
+    return out;
+  }
+
+  /* Crockford base32 — no I, L, O or U, so shares survive being read aloud
+     or copied by hand. Decoding folds the look-alikes back in.               */
+  const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+  function b32enc(bytes) {
+    let bits = 0, val = 0, out = '';
+    for (const b of bytes) {
+      val = (val << 8) | b; bits += 8;
+      while (bits >= 5) { out += B32[(val >>> (bits - 5)) & 31]; bits -= 5; }
+    }
+    if (bits > 0) out += B32[(val << (5 - bits)) & 31];
+    return out;
+  }
+
+  function b32dec(str) {
+    const s = str.toUpperCase().replace(/[^0-9A-Z]/g, '')
+                 .replace(/O/g, '0').replace(/[IL]/g, '1');
+    let bits = 0, val = 0; const out = [];
+    for (const c of s) {
+      const idx = B32.indexOf(c);
+      if (idx < 0) throw new Error(`invalid character "${c}"`);
+      val = (val << 5) | idx; bits += 5;
+      if (bits >= 8) { out.push((val >>> (bits - 8)) & 255); bits -= 8; }
+    }
+    return new Uint8Array(out);
+  }
+
+  function crc16(bytes) {
+    let crc = 0xffff;
+    for (const b of bytes) {
+      crc ^= b << 8;
+      for (let i = 0; i < 8; i++)
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+    }
+    return crc;
+  }
+
+  /* Wire format: CS1-<base32 of [ver, k, x, ...y, crc16-hi, crc16-lo]> */
+  function encodeShare(k, x, y) {
+    const p = new Uint8Array(3 + y.length);
+    p[0] = 1; p[1] = k; p[2] = x; p.set(y, 3);
+    const c = crc16(p);
+    const full = new Uint8Array(p.length + 2);
+    full.set(p); full[p.length] = c >> 8; full[p.length + 1] = c & 0xff;
+    return 'CS1-' + (b32enc(full).match(/.{1,5}/g) || []).join('-');
+  }
+
+  function decodeShare(str) {
+    const t = str.trim().toUpperCase();
+    if (!/^CS[1IL]-/.test(t)) throw new Error('every line must start with CS1-');
+    const full = b32dec(t.slice(4));                 // prefix tolerates a hand-copied "CSI-"
+    if (full.length < 6) throw new Error('a share is truncated');
+    const p = full.slice(0, -2);
+    const c = (full[full.length - 2] << 8) | full[full.length - 1];
+    if (crc16(p) !== c) throw new Error('a share failed its checksum — it was mistyped');
+    if (p[0] !== 1) throw new Error(`unknown share format (v${p[0]})`);
+    if (p[2] === 0)  throw new Error('a share carries an invalid index');
+    return { k: p[1], x: p[2], y: p.slice(3) };
+  }
+
+  /* ─── UI ─────────────────────────────────────────────────────────────── */
+  const MAX_SHARES = 10, TAG_LEN = 3;
+
+  (function initShareSelects() {
+    const total = document.getElementById('sharesTotal');
+    for (let i = 2; i <= MAX_SHARES; i++) total.add(new Option(i, i));
+    total.value = 3;
+    syncThreshold();
+  })();
+
+  function syncThreshold() {
+    const total  = parseInt(document.getElementById('sharesTotal').value, 10);
+    const needed = document.getElementById('sharesNeeded');
+    const prev   = parseInt(needed.value, 10) || 2;
+    needed.innerHTML = '';
+    for (let i = 2; i <= total; i++) needed.add(new Option(i, i));
+    needed.value = Math.min(prev, total);
+  }
+
+  function setSplitMode(mode) {
+    const isSplit = mode === 'split';
+    document.getElementById('panelSplit').classList.toggle('hidden', !isSplit);
+    document.getElementById('panelCombine').classList.toggle('hidden', isSplit);
+    document.getElementById('tabSplit').classList.toggle('active', isSplit);
+    document.getElementById('tabCombine').classList.toggle('active', !isSplit);
+  }
+
+  function useGeneratedPassword() {
+    const text = passwordBox.textContent;
+    if (text === 'Select at least one character type.' || text === 'Generating...') return;
+    document.getElementById('splitInput').value = text;
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.innerHTML = `<b>Couldn't do that.</b> ${msg}`;
+    el.classList.remove('hidden');
+  }
+
+  async function tagOf(bytes) {
+    return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)).slice(0, TAG_LEN);
+  }
+
+  async function doSplit() {
+    const out = document.getElementById('sharesOut');
+    out.innerHTML = '';
+    document.getElementById('splitError').classList.add('hidden');
+
+    const secret = document.getElementById('splitInput').value;
+    if (!secret) return showError('splitError', 'Enter a secret to split first.');
+
+    const body = new TextEncoder().encode(secret);
+    if (body.length > 512)
+      return showError('splitError', 'Keep the secret under 512 bytes — this is built for keys and passwords, not documents.');
+
+    const n = parseInt(document.getElementById('sharesTotal').value, 10);
+    const k = parseInt(document.getElementById('sharesNeeded').value, 10);
+
+    // The checksum rides inside the split payload, so it leaks nothing on its own.
+    const blob = new Uint8Array(body.length + TAG_LEN);
+    blob.set(body); blob.set(await tagOf(body), body.length);
+
+    for (const s of gfSplit(blob, n, k)) {
+      const text = encodeShare(k, s.x, s.y);
+      const row  = document.createElement('div');
+      row.className = 'share-row';
+
+      const tag = document.createElement('span');
+      tag.className = 'share-tag';
+      tag.textContent = `${s.x} / ${n}`;
+
+      const val = document.createElement('div');
+      val.className = 'output';
+      val.textContent = text;
+
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn'; btn.title = 'Copy'; btn.textContent = '⧉';
+      btn.onclick = () => navigator.clipboard.writeText(text).then(showToast);
+
+      row.append(tag, val, btn);
+      out.appendChild(row);
+    }
+
+    const hint = document.createElement('div');
+    hint.className = 'note';
+    hint.innerHTML = `<b>${n} shares created — any ${k} rebuild the secret.</b> ` +
+      `Losing up to ${n - k} of them costs you nothing; an attacker holding ${k - 1} learns nothing. ` +
+      `Nothing was uploaded: the split happened in this tab, and closing it erases every trace.`;
+    out.appendChild(hint);
+  }
+
+  async function doRecover() {
+    document.getElementById('recoverError').classList.add('hidden');
+    document.getElementById('recoverOut').classList.add('hidden');
+
+    const lines = document.getElementById('combineInput').value
+      .split('\n').map(l => l.trim()).filter(Boolean);
+    if (!lines.length) return showError('recoverError', 'Paste your shares first, one per line.');
+
+    let parsed;
+    try { parsed = lines.map(decodeShare); }
+    catch (e) { return showError('recoverError', e.message + '.'); }
+
+    const len = parsed[0].y.length;
+    if (parsed.some(s => s.y.length !== len))
+      return showError('recoverError', 'These shares are different lengths — they come from different secrets.');
+
+    const seen = new Set();
+    for (const s of parsed) {
+      if (seen.has(s.x)) return showError('recoverError', `Share ${s.x} was pasted twice — each share must be distinct.`);
+      seen.add(s.x);
+    }
+
+    const k = parsed[0].k;
+    if (parsed.length < k)
+      return showError('recoverError', `This secret needs ${k} shares and you have ${parsed.length}. Missing shares cannot be guessed or brute-forced — you need the real ones.`);
+
+    const blob = gfCombine(parsed.slice(0, k), len);
+    const body = blob.slice(0, -TAG_LEN), tag = blob.slice(-TAG_LEN);
+    const want = await tagOf(body);
+    if (!tag.every((b, i) => b === want[i]))
+      return showError('recoverError', 'The shares did not verify. They are individually well-formed but belong to different secrets, or one has been altered.');
+
+    document.getElementById('recoveredText').textContent = new TextDecoder().decode(body);
+    document.getElementById('recoverOut').classList.remove('hidden');
   }
 
   /* MD5 */

@@ -480,7 +480,10 @@
       </div>
 
       <div id="panelSplit">
+        <!-- spellcheck off is load-bearing: browser "enhanced" spellcheckers ship the
+             contents of text fields to a remote service, which would defeat the point. -->
         <textarea class="field" id="splitInput" rows="2" oninput="scheduleSplit()"
+                  spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
                   placeholder="Type or paste a secret — a password, a recovery key, an API token…"></textarea>
 
         <div class="controls" style="margin-top:12px">
@@ -509,6 +512,7 @@
 
       <div id="panelCombine" class="hidden">
         <textarea class="field" id="combineInput" rows="6"
+                  spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
                   placeholder="Paste the shares here, one per line — CS1-…"></textarea>
 
         <div class="controls" style="margin-top:12px">
@@ -823,9 +827,14 @@
     document.getElementById('splitError').classList.add('hidden');
   }
 
+  // Built as text nodes, not innerHTML: decode errors quote the offending
+  // character, and that character comes from whatever was pasted in.
   function showError(id, msg) {
     const el = document.getElementById(id);
-    el.innerHTML = `<b>Couldn't do that.</b> ${msg}`;
+    el.textContent = '';
+    const lead = document.createElement('b');
+    lead.textContent = "Couldn't do that.";
+    el.append(lead, document.createTextNode(' ' + msg));
     el.classList.remove('hidden');
   }
 

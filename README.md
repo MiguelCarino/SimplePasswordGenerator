@@ -1,6 +1,24 @@
 # SimplePasswordGenerator
 Simple Password Generator that also outputs encrypted string in the most commong algorithms for pragmatic purposes.
 
+## Tabs
+
+Two tabs, both deep-linkable so you can send someone straight to the one they need:
+
+| Link | Opens |
+|---|---|
+| `#pass` | password generator (also the default) |
+| `#share` | secret splitting |
+| `#split` / `#recover` | the Share tab, on that specific sub-tab |
+
+Tabs write the hash as you click, so Back returns to the previous tab.
+
+**Share this password** on the Generate tab carries the current password straight into
+Share, already split. **Generate a password** on the Share tab goes back the other way.
+
+Shares regenerate as you type or paste — no button to press. The default is 2-of-2, so
+a secret is split the moment it lands in the box.
+
 ## Splitting a secret to hand it over safely
 
 Sharing a password by chopping it into chunks leaks it: two thirds of a 24-character

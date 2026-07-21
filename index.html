@@ -284,6 +284,25 @@
     }
     .copy-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-faint); }
 
+    /* ─── MAIN TABS ──────────────────────────────────────────── */
+    .main-tabs {
+      display: flex; gap: 22px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+    .main-tab {
+      background: transparent; border: none;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+      color: var(--text-muted); padding: 0.55rem 0.15rem 0.7rem;
+      cursor: pointer; transition: 0.15s;
+      font-family: 'Red Hat Display', sans-serif;
+      font-size: 0.95rem; font-weight: 900; letter-spacing: 0.02em;
+    }
+    .main-tab:hover { color: var(--text); }
+    .main-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .view { display: flex; flex-direction: column; gap: 20px; }
+
     /* ─── SPLIT / COMBINE ────────────────────────────────────── */
     .mode-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
     .mode-tab {
@@ -374,12 +393,20 @@
 <div class="page-body">
   <div class="container">
 
+    <div class="main-tabs">
+      <button class="main-tab active" id="tabPass"  onclick="goTab('pass')">Generate</button>
+      <button class="main-tab"        id="tabShare" onclick="goTab('share')">Share</button>
+    </div>
+
+    <div class="view" id="viewPass">
+
     <p class="subheading">Generated instantly in your browser. Click the password to copy it.</p>
 
     <div class="password-box" id="passwordOutput" title="Click to copy" onclick="copyMainPassword()">Generating...</div>
 
     <div class="controls">
       <button class="btn" onclick="generatePassword()">↻ Generate New</button>
+      <button class="btn" onclick="shareGeneratedPassword()">⑂ Share this password</button>
       <div class="length-track">
         <span class="length-label">Length</span>
         <input type="range" id="lengthRange" min="8" max="128" value="32" oninput="updateLengthDisplay()">
@@ -438,32 +465,34 @@
       </div>
     </div>
 
+    </div><!-- /viewPass -->
+
+    <div class="view hidden" id="viewShare">
+
+    <p class="subheading">Split a secret into shares so no single channel ever carries the whole thing.</p>
+
     <div class="section">
-      <div class="section-title">Split a Secret — Shamir k-of-n</div>
+      <div class="section-title">Shamir k-of-n</div>
 
       <div class="mode-tabs">
-        <button class="mode-tab active" id="tabSplit"   onclick="setSplitMode('split')">Split</button>
-        <button class="mode-tab"        id="tabCombine" onclick="setSplitMode('combine')">Recover</button>
+        <button class="mode-tab active" id="tabSplit"   onclick="goTab('split')">Split</button>
+        <button class="mode-tab"        id="tabCombine" onclick="goTab('recover')">Recover</button>
       </div>
 
       <div id="panelSplit">
-        <textarea class="field" id="splitInput" rows="2"
-                  placeholder="Secret to split — a password, a recovery key, an API token…"></textarea>
+        <textarea class="field" id="splitInput" rows="2" oninput="scheduleSplit()"
+                  placeholder="Type or paste a secret — a password, a recovery key, an API token…"></textarea>
 
         <div class="controls" style="margin-top:12px">
-          <button class="btn" onclick="useGeneratedPassword()">↑ Use password above</button>
+          <button class="btn" onclick="goTab('pass')">↻ Generate a password</button>
           <div class="num-track">
             <span class="length-label">Total shares</span>
-            <select id="sharesTotal" onchange="syncThreshold()"></select>
+            <select id="sharesTotal" onchange="syncThreshold(); scheduleSplit(0)"></select>
           </div>
           <div class="num-track">
             <span class="length-label">Needed to recover</span>
-            <select id="sharesNeeded"></select>
+            <select id="sharesNeeded" onchange="scheduleSplit(0)"></select>
           </div>
-        </div>
-
-        <div class="controls" style="margin-top:12px">
-          <button class="btn" onclick="doSplit()">⑂ Split into shares</button>
         </div>
 
         <div id="splitError" class="note bad hidden"></div>
@@ -498,6 +527,8 @@
         </div>
       </div>
     </div>
+
+    </div><!-- /viewShare -->
 
   </div>
 </div>
@@ -715,7 +746,7 @@
   (function initShareSelects() {
     const total = document.getElementById('sharesTotal');
     for (let i = 2; i <= MAX_SHARES; i++) total.add(new Option(i, i));
-    total.value = 3;
+    total.value = 2;
     syncThreshold();
   })();
 
@@ -736,10 +767,60 @@
     document.getElementById('tabCombine').classList.toggle('active', !isSplit);
   }
 
-  function useGeneratedPassword() {
+  /* ─── Hash routing — #pass / #share (also #split, #recover) ──────────── */
+  const ROUTES = {
+    pass:     { view: 'pass'  },
+    password: { view: 'pass'  },
+    generate: { view: 'pass'  },
+    share:    { view: 'share' },
+    split:    { view: 'share', mode: 'split'   },
+    recover:  { view: 'share', mode: 'combine' },
+    combine:  { view: 'share', mode: 'combine' },
+  };
+
+  function applyRoute() {
+    const key   = location.hash.replace(/^#\/?/, '').toLowerCase();
+    const route = ROUTES[key] || ROUTES.pass;
+    const isPass = route.view === 'pass';
+    document.getElementById('viewPass').classList.toggle('hidden', !isPass);
+    document.getElementById('viewShare').classList.toggle('hidden', isPass);
+    document.getElementById('tabPass').classList.toggle('active', isPass);
+    document.getElementById('tabShare').classList.toggle('active', !isPass);
+    if (route.mode) setSplitMode(route.mode);
+  }
+
+  // Clicking a tab writes the hash; the hashchange listener does the actual
+  // switching, so Back returns to the previous tab and links stay shareable.
+  function goTab(name) {
+    if (location.hash.replace(/^#\/?/, '').toLowerCase() === name) return applyRoute();
+    location.hash = name;
+  }
+
+  window.addEventListener('hashchange', applyRoute);
+  applyRoute();
+
+  // Hand the generated password to the Share tab, already split.
+  function shareGeneratedPassword() {
     const text = passwordBox.textContent;
     if (text === 'Select at least one character type.' || text === 'Generating...') return;
     document.getElementById('splitInput').value = text;
+    goTab('split');
+    autoSplit();                        // .value set in code fires no input event
+  }
+
+  // Re-split as the secret is typed or pasted. Each run draws fresh randomness,
+  // so the shares on screen always belong to the text currently in the box.
+  let splitTimer = null;
+  function scheduleSplit(delay = 220) {
+    clearTimeout(splitTimer);
+    splitTimer = setTimeout(autoSplit, delay);
+  }
+
+  function autoSplit() {
+    clearTimeout(splitTimer);
+    if (document.getElementById('splitInput').value) return doSplit();
+    document.getElementById('sharesOut').innerHTML = '';   // empty box: clear, don't scold
+    document.getElementById('splitError').classList.add('hidden');
   }
 
   function showError(id, msg) {
@@ -794,8 +875,12 @@
 
     const hint = document.createElement('div');
     hint.className = 'note';
-    hint.innerHTML = `<b>${n} shares created — any ${k} rebuild the secret.</b> ` +
-      `Losing up to ${n - k} of them costs you nothing; an attacker holding ${k - 1} learns nothing. ` +
+    hint.innerHTML = (n === k
+        ? `<b>${n} shares created — every one is needed.</b> Lose a single share and the secret is
+           gone for good, so this suits a hand-off rather than a backup. `
+        : `<b>${n} shares created — any ${k} rebuild the secret.</b> Losing up to ${n - k} of
+           them costs you nothing. `) +
+      `Anyone holding ${k - 1} of them learns nothing at all. ` +
       `Nothing was uploaded: the split happened in this tab, and closing it erases every trace.`;
     out.appendChild(hint);
   }

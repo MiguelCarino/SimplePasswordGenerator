@@ -116,6 +116,8 @@
     .btn.plain { border-color: var(--border); color: var(--text-sec); }
     .btn.plain:hover { background: var(--surface2); color: var(--text); border-color: var(--border-hv); box-shadow: none; }
     .btn.small { padding: 0.4rem 0.8rem; font-size: 0.78rem; }
+    .btn.solid { background: var(--accent); border-color: var(--accent); color: #050505; font-weight: 700; }
+    .btn.solid:hover { background: #fbbf24; border-color: #fbbf24; box-shadow: 0 0 16px var(--accent-glow); }
 
     .opt-label { font-size: 0.8rem; color: var(--text-sec); margin-bottom: 8px; }
 
@@ -188,6 +190,19 @@
     }
     .recovered:hover { border-color: var(--accent); background: var(--surface2); }
 
+    /* A part that has been pasted and verified collapses into this receipt row. */
+    .slot-done {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--accent-faint); border: 1px solid var(--accent-dim);
+      border-radius: 5px; padding: 0.6rem 0.85rem;
+    }
+    .slot-done .tick { color: var(--accent); font-weight: 900; flex-shrink: 0; }
+    .slot-done .who  { font-size: 0.85rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .slot-done .code {
+      font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--text-muted);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0;
+    }
+
     .advanced {
       border-top: 1px solid var(--border); padding-top: 18px;
       font-size: 0.82rem; color: var(--text-sec); line-height: 1.6;
@@ -230,7 +245,7 @@
 
       <div class="controls">
         <button class="btn" onclick="newPassword()">Make another</button>
-        <button class="btn plain" onclick="sendThis()">Send this safely →</button>
+        <button class="btn solid" onclick="sendThis()">Send this safely →</button>
       </div>
 
       <div>
@@ -253,7 +268,11 @@
 
       <textarea class="field" id="secretInput" rows="2" oninput="scheduleSplit()"
                 spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
-                placeholder="Paste the password you need to send"></textarea>
+                placeholder="Type or paste the password you need to send"></textarea>
+
+      <div style="margin-top:-8px">
+        <button class="btn small solid" onclick="goTab('open')">Receiving one instead? →</button>
+      </div>
 
       <div id="sendError" class="note bad hidden"></div>
       <div id="parts" style="display:flex; flex-direction:column; gap:14px"></div>
@@ -270,15 +289,20 @@
     <!-- ─── OPEN WHAT I WAS SENT ─────────────────────────────── -->
     <div class="view hidden" id="viewOpen">
 
-      <textarea class="field" id="partsInput" rows="7" oninput="scheduleOpen()"
-                spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
-                placeholder="Paste both messages here, one after the other"></textarea>
+      <!-- One part per box. A pasted part locks in as a receipt row and the next
+           box appears underneath; when enough parts are in, it opens by itself.
+           Pasting all the messages at once into the first box also works. -->
+      <div id="slots" style="display:flex; flex-direction:column; gap:12px"></div>
 
       <div id="openError" class="note bad hidden"></div>
 
       <div id="openResult" class="hidden">
         <div class="recovered" id="openedText" title="Click to copy" onclick="copyOpened()"></div>
         <p class="box-hint" style="margin-top:10px">Click to copy.</p>
+      </div>
+
+      <div id="openReset" class="hidden">
+        <button class="btn plain small" onclick="resetOpen()">Start over</button>
       </div>
 
     </div>
@@ -301,9 +325,10 @@
   const DIGITS  = '23456789';
   const SYMBOLS = '!@#$%&*+-=?';
   const LENGTHS = [
-    { label: 'Short',  len: 12, note: '12 characters' },
-    { label: 'Medium', len: 20, note: '20 characters' },
-    { label: 'Long',   len: 32, note: '32 characters' },
+    { label: 'Easy',   len: 8,  note: '8 characters'  },
+    { label: 'Good',   len: 12, note: '12 characters' },
+    { label: 'Better', len: 20, note: '20 characters' },
+    { label: 'Strong', len: 32, note: '32 characters' },
   ];
   let chosen = 0;
 
@@ -401,24 +426,95 @@
     $('sendHow').classList.remove('hidden');
   }
 
-  /* ─── Opening what you were sent ────────────────────────────────────── */
-  let openTimer = null;
-  function scheduleOpen(delay = 300) { clearTimeout(openTimer); openTimer = setTimeout(runOpen, delay); }
+  /* ─── Opening what you were sent ──────────────────────────────────────
+     One box per part. Each part's header says how many are needed in total,
+     so after the first paste the page knows how many boxes to offer — and it
+     opens the secret by itself the moment the last one lands.               */
+  const PART_RE = /CS[1IL]-[0-9A-Z]{1,5}(?:-[0-9A-Z]{1,5})+/gi;
+  let openShares = [];                          // verified parts, in paste order
+  let openTimer  = null;
 
-  async function runOpen() {
-    clearTimeout(openTimer);
+  function resetOpen() {
+    openShares = [];
     $('openError').classList.add('hidden');
     $('openResult').classList.add('hidden');
+    $('openReset').classList.add('hidden');
+    renderSlots();
+  }
 
-    const text = $('partsInput').value;
-    if (!/CS[1IL]-/i.test(text)) return;       // nothing that looks like a part yet
+  function renderSlots(focus = false) {
+    const wrap = $('slots');
+    wrap.textContent = '';
 
-    let out;
-    try { out = await CS.recover(text); }
-    catch (e) { return fail('openError', e.message); }
+    openShares.forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'slot-done';
+      const tick = document.createElement('span');
+      tick.className = 'tick'; tick.textContent = '✓';
+      const who = document.createElement('span');
+      who.className = 'who'; who.textContent = `Part ${s.x} of ${s.total}`;
+      const code = document.createElement('span');
+      code.className = 'code'; code.textContent = s.text;
+      row.append(tick, who, code);
+      wrap.appendChild(row);
+    });
 
-    $('openedText').textContent = out.secret;
-    $('openResult').classList.remove('hidden');
+    const needed = openShares.length ? openShares[0].k : 0;
+    if (needed && openShares.length >= needed) return;   // solved — no more boxes
+
+    const box = document.createElement('textarea');
+    box.className = 'field'; box.rows = 3; box.id = 'partBox';
+    box.spellcheck = false;
+    box.setAttribute('autocomplete', 'off');
+    box.setAttribute('autocapitalize', 'off');
+    box.setAttribute('autocorrect', 'off');
+    box.placeholder = openShares.length
+      ? `Got it — paste the next part (${openShares.length + 1} of ${needed})`
+      : 'Paste the first message you were sent';
+    box.oninput = () => { clearTimeout(openTimer); openTimer = setTimeout(takeParts, 250); };
+    wrap.appendChild(box);
+    if (focus) box.focus();
+  }
+
+  async function takeParts() {
+    clearTimeout(openTimer);
+    $('openError').classList.add('hidden');
+
+    const box = $('partBox');
+    if (!box) return;
+    const found = box.value.match(PART_RE);     // the wrapper text around a part is ignored
+    if (!found) return;                         // still typing — wait, don't scold
+
+    for (const raw of found) {
+      let p;
+      try { p = CS.parseShare(raw); }
+      catch (e) { return fail('openError', e.message); }
+      if (openShares.some(s => s.x === p.x))
+        return fail('openError', `part ${p.x} is already in — this looks like the same message pasted twice`);
+      if (openShares.length && (p.k !== openShares[0].k || p.y.length !== openShares[0].y.length))
+        return fail('openError', 'that part belongs to a different secret than the ones above');
+      // A share encodes how many are NEEDED (k), not how many exist; on this
+      // page splits are k-of-k, so k is also what the receipt rows display.
+      openShares.push({ ...p, total: p.k, text: raw.toUpperCase() });
+    }
+
+    if (openShares.length >= openShares[0].k) {
+      let out;
+      try { out = await CS.recover(openShares.map(s => s.text)); }
+      catch (e) {
+        openShares = [];                        // mismatched parts: start clean
+        renderSlots();
+        return fail('openError', e.message);
+      }
+      $('openedText').textContent = out.secret;
+      $('openResult').classList.remove('hidden');
+      $('openReset').classList.remove('hidden');
+      renderSlots();
+      return;
+    }
+
+    $('openReset').classList.remove('hidden');
+    renderSlots(true);                          // lock what arrived, open the next box
   }
 
   // Text nodes, not innerHTML: these messages quote what was pasted in.
@@ -458,6 +554,7 @@
   window.addEventListener('hashchange', applyRoute);
   applyRoute();
   newPassword();
+  renderSlots();
 </script>
 <script src="carino-navbar.js" data-app="Password" defer></script>
 </body>

@@ -267,9 +267,14 @@
     <!-- ─── SEND IT SAFELY ───────────────────────────────────── -->
     <div class="view hidden" id="viewSend">
 
-      <textarea class="field" id="secretInput" rows="2" oninput="scheduleSplit()"
-                spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"
-                placeholder="Type or paste the password you need to send"></textarea>
+      <!-- A real password input, so what is typed is masked by the browser
+           itself; the toggle flips the input type, never a CSS illusion. -->
+      <div style="display:flex; gap:10px">
+        <input class="field" type="password" id="secretInput" oninput="scheduleSplit()" style="flex:1"
+               spellcheck="false" autocomplete="new-password" autocapitalize="off" autocorrect="off"
+               placeholder="Type or paste the password you need to send">
+        <button class="btn plain" id="sendToggle" onclick="toggleSend()">Show</button>
+      </div>
 
       <div style="margin-top:-8px">
         <button class="btn small solid" onclick="goTab('open')">Receiving one instead? →</button>
@@ -393,12 +398,17 @@
   }
 
   /* ─── Sending it safely ─────────────────────────────────────────────── */
-  // The send box shows the secret in the clear on purpose: the sender must be
-  // able to check what they are about to split before anything goes out.
   function sendThis() {
     $('secretInput').value = currentPassword;
     goTab('send');
     runSplit();
+  }
+
+  function toggleSend() {
+    const f = $('secretInput');
+    const show = f.type === 'password';
+    f.type = show ? 'text' : 'password';
+    $('sendToggle').textContent = show ? 'Hide' : 'Show';
   }
 
   let splitTimer = null;

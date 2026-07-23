@@ -241,11 +241,12 @@
     <div class="view" id="viewMake">
 
       <div class="password-box" id="passwordOutput" title="Click to copy" onclick="copyPassword()">…</div>
-      <p class="box-hint">Click the password to copy it.</p>
+      <p class="box-hint">Click to copy — it copies even while hidden.</p>
 
       <div class="controls">
         <button class="btn" onclick="newPassword()">Make another</button>
         <button class="btn solid" onclick="sendThis()">Send this safely →</button>
+        <button class="btn plain" id="pwToggle" onclick="togglePw()">Show</button>
       </div>
 
       <div>
@@ -298,7 +299,10 @@
 
       <div id="openResult" class="hidden">
         <div class="recovered" id="openedText" title="Click to copy" onclick="copyOpened()"></div>
-        <p class="box-hint" style="margin-top:10px">Click to copy.</p>
+        <div style="display:flex; align-items:center; justify-content:center; gap:12px; margin-top:10px">
+          <span class="box-hint" style="margin:0">Click to copy — it copies even while hidden.</span>
+          <button class="btn plain small" id="openToggle" onclick="toggleOpened()">Show</button>
+        </div>
       </div>
 
       <div id="openReset" class="hidden">
@@ -351,6 +355,10 @@
     });
   })();
 
+  // The real password lives here, not in the DOM: while hidden, the page shows
+  // dots, so a screen share or a shoulder never sees it — but copying still works.
+  let currentPassword = '', pwShown = false;
+
   function newPassword() {
     let set = ALPHA + DIGITS;
     if (!$('lettersOnly').checked) set += SYMBOLS;
@@ -359,13 +367,21 @@
     crypto.getRandomValues(r);
     // Rejection-free modulo bias is negligible here (2^32 vs a ~57-char set),
     // but draw fresh values rather than reusing any.
-    box.textContent = Array.from(r, v => set[v % set.length]).join('');
+    currentPassword = Array.from(r, v => set[v % set.length]).join('');
+    paintPassword();
   }
+
+  function paintPassword() {
+    box.textContent = pwShown ? currentPassword : '•'.repeat(currentPassword.length);
+    $('pwToggle').textContent = pwShown ? 'Hide' : 'Show';
+  }
+
+  function togglePw() { pwShown = !pwShown; paintPassword(); }
 
   function syncCheck(cb) { cb.closest('.check-label').classList.toggle('active', cb.checked); }
 
-  function copyPassword() { copy(box.textContent); }
-  function copyOpened()   { copy($('openedText').textContent); }
+  function copyPassword() { copy(currentPassword); }
+  function copyOpened()   { copy(openedSecret); }
 
   function copy(text) {
     if (!text) return;
@@ -377,8 +393,10 @@
   }
 
   /* ─── Sending it safely ─────────────────────────────────────────────── */
+  // The send box shows the secret in the clear on purpose: the sender must be
+  // able to check what they are about to split before anything goes out.
   function sendThis() {
-    $('secretInput').value = box.textContent;
+    $('secretInput').value = currentPassword;
     goTab('send');
     runSplit();
   }
@@ -433,9 +451,18 @@
   const PART_RE = /CS[1IL]-[0-9A-Z]{1,5}(?:-[0-9A-Z]{1,5})+/gi;
   let openShares = [];                          // verified parts, in paste order
   let openTimer  = null;
+  let openedSecret = '', openedShown = false;   // same hide-by-default as the maker
+
+  function paintOpened() {
+    $('openedText').textContent = openedShown ? openedSecret : '•'.repeat(openedSecret.length);
+    $('openToggle').textContent = openedShown ? 'Hide' : 'Show';
+  }
+
+  function toggleOpened() { openedShown = !openedShown; paintOpened(); }
 
   function resetOpen() {
     openShares = [];
+    openedSecret = ''; openedShown = false;
     $('openError').classList.add('hidden');
     $('openResult').classList.add('hidden');
     $('openReset').classList.add('hidden');
@@ -506,7 +533,8 @@
         renderSlots();
         return fail('openError', e.message);
       }
-      $('openedText').textContent = out.secret;
+      openedSecret = out.secret; openedShown = false;
+      paintOpened();
       $('openResult').classList.remove('hidden');
       $('openReset').classList.remove('hidden');
       renderSlots();
